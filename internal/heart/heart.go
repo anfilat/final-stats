@@ -45,7 +45,7 @@ func (h *heart) Start(wg *sync.WaitGroup, config symo.MetricConf) {
 			case <-h.ctx.Done():
 				return
 			case now := <-ticker.C:
-				h.work(now)
+				h.work(now.Truncate(time.Second))
 			}
 		}
 	}()

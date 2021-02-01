@@ -5,7 +5,9 @@ import (
 	"time"
 )
 
-const MaxOldPoints = 10 * time.Minute
+// данные хранятся не более 10 минут.
+const MaxSeconds = 10 * 60
+const MaxOldPoints = MaxSeconds * time.Second
 
 type Heart interface {
 	Start(wg *sync.WaitGroup, config MetricConf)
