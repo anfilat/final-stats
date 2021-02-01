@@ -12,6 +12,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/anfilat/final-stats/internal/symo"
 )
 
 var (
@@ -19,19 +21,23 @@ var (
 	loadAvg1M            float64
 	loadAvg5M            float64
 	loadAvg15M           float64
-	loadAvgMutex         sync.RWMutex
+	loadAvgMutex         sync.Mutex
 	loadAvgGoroutineOnce sync.Once
 )
 
-func Avg(_ context.Context) (*Data, error) {
+func Avg(_ context.Context) (*symo.LoadAvgData, error) {
 	loadAvgGoroutineOnce.Do(func() {
 		go loadAvgGoroutine()
 	})
 
-	loadAvgMutex.RLock()
-	defer loadAvgMutex.RUnlock()
+	loadAvgMutex.Lock()
+	defer loadAvgMutex.Unlock()
 
-	return &Data{
+	if loadErr != nil {
+		return nil, loadErr
+	}
+
+	return &symo.LoadAvgData{
 		Load1:  loadAvg1M,
 		Load5:  loadAvg5M,
 		Load15: loadAvg15M,
