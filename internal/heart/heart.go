@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anfilat/final-stats/internal/loadavg"
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
@@ -27,9 +26,9 @@ func NewHeart(ctx context.Context, log symo.Logger) symo.Heart {
 	}
 }
 
-func (h *heart) Start(wg *sync.WaitGroup, config symo.MetricConf) {
+func (h *heart) Start(wg *sync.WaitGroup, config symo.MetricConf, readers symo.MetricReaders) {
 	wg.Add(1)
-	h.mountMetrics(config)
+	h.mountMetrics(config, readers)
 
 	go func() {
 		defer func() {
@@ -51,9 +50,9 @@ func (h *heart) Start(wg *sync.WaitGroup, config symo.MetricConf) {
 	}()
 }
 
-func (h *heart) mountMetrics(config symo.MetricConf) {
+func (h *heart) mountMetrics(config symo.MetricConf, readers symo.MetricReaders) {
 	if config.Loadavg {
-		h.loadavg(h.newWorkerChan())
+		h.loadavg(h.newWorkerChan(), readers.LoadAvg)
 	}
 }
 
@@ -106,7 +105,7 @@ func (h *heart) cleanPoints(now time.Time) {
 	}
 }
 
-func (h *heart) loadavg(ch <-chan symo.Beat) {
+func (h *heart) loadavg(ch <-chan symo.Beat, reader symo.LoadAvg) {
 	go func() {
 		for {
 			select {
@@ -117,7 +116,7 @@ func (h *heart) loadavg(ch <-chan symo.Beat) {
 					ctx, cancel := context.WithTimeout(h.ctx, 950*time.Millisecond)
 					defer cancel()
 
-					loadAvg, err := loadavg.Avg(ctx)
+					loadAvg, err := reader(ctx)
 					if err != nil {
 						h.log.Debug(fmt.Errorf("cannot get load average: %w", err))
 						return

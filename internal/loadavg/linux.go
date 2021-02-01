@@ -12,7 +12,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func Avg(ctx context.Context) (*symo.LoadAvgData, error) {
+func Read(ctx context.Context) (*symo.LoadAvgData, error) {
 	stat, err := fileAvg(ctx)
 	if err != nil {
 		stat, err = sysInfoAvg(ctx)
@@ -28,23 +28,23 @@ func fileAvg(_ context.Context) (*symo.LoadAvgData, error) {
 
 	values := strings.Fields(content[0])
 
-	Load1, err := strconv.ParseFloat(values[0], 64)
+	load1, err := strconv.ParseFloat(values[0], 64)
 	if err != nil {
 		return nil, err
 	}
-	Load5, err := strconv.ParseFloat(values[1], 64)
+	load5, err := strconv.ParseFloat(values[1], 64)
 	if err != nil {
 		return nil, err
 	}
-	Load15, err := strconv.ParseFloat(values[2], 64)
+	load15, err := strconv.ParseFloat(values[2], 64)
 	if err != nil {
 		return nil, err
 	}
 
 	return &symo.LoadAvgData{
-		Load1,
-		Load5,
-		Load15,
+		Load1:  load1,
+		Load5:  load5,
+		Load15: load15,
 	}, nil
 }
 

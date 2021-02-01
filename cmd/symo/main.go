@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/anfilat/final-stats/internal/heart"
+	"github.com/anfilat/final-stats/internal/loadavg"
 	"github.com/anfilat/final-stats/internal/logger"
 	"github.com/anfilat/final-stats/internal/symo"
 )
@@ -46,8 +47,11 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 
+	readers := symo.MetricReaders{
+		LoadAvg: loadavg.Read,
+	}
 	hearth := heart.NewHeart(mainCtx, logg)
-	hearth.Start(wg, config.Metric)
+	hearth.Start(wg, config.Metric, readers)
 
 	<-mainCtx.Done()
 
