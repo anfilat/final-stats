@@ -25,7 +25,7 @@ func fileAvg(_ context.Context) (*Data, error) {
 		return nil, err
 	}
 
-	values := strings.Fields(string(content[0]))
+	values := strings.Fields(content[0])
 
 	Load1, err := strconv.ParseFloat(values[0], 64)
 	if err != nil {
@@ -62,5 +62,5 @@ func sysInfoAvg(_ context.Context) (*Data, error) {
 }
 
 func sysInfoLoadToHuman(val uint64) float64 {
-	return common.ToFix2(float64(val) / float64(1<<16))
+	return common.NumToFix2(float64(val) / float64(1<<16))
 }

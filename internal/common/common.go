@@ -22,6 +22,6 @@ func procFileName(name string) string {
 	return filepath.Join(procPath, name)
 }
 
-func ToFix2(num float64) float64 {
+func NumToFix2(num float64) float64 {
 	return math.Round(num*100) / 100
 }
