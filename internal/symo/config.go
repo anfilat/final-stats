@@ -1,4 +1,4 @@
-package main
+package symo
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func newConfig(configFile string) (Config, error) {
+func NewConfig(configFile string) (Config, error) {
 	config := Config{}
 
 	v := viper.New()

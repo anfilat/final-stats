@@ -6,8 +6,10 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
+	"github.com/anfilat/final-stats/internal/heart"
 	"github.com/anfilat/final-stats/internal/logger"
 	"github.com/anfilat/final-stats/internal/symo"
 )
@@ -30,7 +32,7 @@ func main() {
 
 	go watchSignals(cancel)
 
-	config, err := newConfig(configFile)
+	config, err := symo.NewConfig(configFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,11 +44,15 @@ func main() {
 
 	logg.Info("starting system monitor")
 
+	wg := &sync.WaitGroup{}
+
+	hearth := heart.NewHeart(mainCtx, logg)
+	hearth.Start(wg, config.Metric)
+
 	<-mainCtx.Done()
 
 	logg.Info("stopping system monitor...")
-	cancel()
-	shutDown(logg)
+	wg.Wait()
 	logg.Info("system monitor is stopped")
 }
 
@@ -56,8 +62,4 @@ func watchSignals(cancel context.CancelFunc) {
 
 	<-signals
 	cancel()
-}
-
-func shutDown(_ symo.Logger) {
-	// TODO
 }
