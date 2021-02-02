@@ -11,7 +11,7 @@ const MaxSeconds = 10 * 60
 const MaxOldPoints = MaxSeconds * time.Second
 
 type Heart interface {
-	Start(wg *sync.WaitGroup, config MetricConf, readers MetricReaders)
+	Start(wg *sync.WaitGroup)
 }
 
 type Beat struct {
@@ -35,6 +35,26 @@ type LoadAvgData struct {
 	Load1  float64
 	Load5  float64
 	Load15 float64
+}
+
+type Clients interface {
+	Start(wg *sync.WaitGroup)
+}
+
+type ClientsToHeartChan chan HeartCommand
+
+type HeartToClientsChan chan ClientsBeat
+
+type HeartCommand int
+
+const (
+	Start HeartCommand = iota
+	Stop
+)
+
+type ClientsBeat struct {
+	Time   time.Time
+	Points Points
 }
 
 type Logger interface {
