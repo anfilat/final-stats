@@ -44,7 +44,7 @@ func configure(v *viper.Viper) {
 }
 
 type Config struct {
-	Logger LoggerConf
+	Log    LoggerConf
 	Server ServerConf
 	Metric MetricConf
 }
