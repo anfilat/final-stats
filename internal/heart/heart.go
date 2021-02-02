@@ -13,7 +13,7 @@ type heart struct {
 	ctx           context.Context
 	pointsMutex   *sync.Mutex
 	points        symo.Points
-	workerChains  []chan<- symo.Beat
+	workerChans   []chan<- symo.Beat
 	isClients     bool
 	config        symo.MetricConf
 	readers       symo.MetricReaders
@@ -43,6 +43,7 @@ func (h *heart) Start(wg *sync.WaitGroup) {
 
 	go func() {
 		defer func() {
+			h.log.Debug("heart stooped")
 			close(h.toClientsChan)
 			h.unmountMetrics()
 			wg.Done()
@@ -68,14 +69,14 @@ func (h *heart) mountMetrics(config symo.MetricConf, readers symo.MetricReaders)
 }
 
 func (h *heart) unmountMetrics() {
-	for _, ch := range h.workerChains {
+	for _, ch := range h.workerChans {
 		close(ch)
 	}
 }
 
 func (h *heart) newWorkerChan() chan symo.Beat {
 	ch := make(chan symo.Beat, 1)
-	h.workerChains = append(h.workerChains, ch)
+	h.workerChans = append(h.workerChans, ch)
 
 	return ch
 }
@@ -86,6 +87,7 @@ func (h *heart) waitClients() {
 	case mess := <-h.toHeartChan:
 		if mess == symo.Start {
 			h.isClients = true
+			h.log.Debug("start send stats")
 		}
 	}
 }
@@ -101,6 +103,7 @@ func (h *heart) work() {
 		case mess := <-h.toHeartChan:
 			if mess == symo.Stop {
 				h.isClients = false
+				h.log.Debug("stop send stats")
 				return
 			}
 		case now := <-ticker.C:
@@ -114,7 +117,7 @@ func (h *heart) workPoint(now time.Time) {
 	point := h.newPoint(now)
 
 	// точка отправляется всем горутинам, ответственным за получение части статистики для заполнения
-	for _, ch := range h.workerChains {
+	for _, ch := range h.workerChans {
 		ch <- symo.Beat{
 			Time:  now,
 			Point: point,
@@ -125,9 +128,15 @@ func (h *heart) workPoint(now time.Time) {
 	h.cleanPoints(now)
 
 	// накопленная статистика отправляются клиентам
-	h.toClientsChan <- symo.ClientsBeat{
+
+	data := symo.ClientsBeat{
 		Time:   now,
 		Points: h.CloneOldPoints(now),
+	}
+
+	select {
+	case <-h.ctx.Done():
+	case h.toClientsChan <- data:
 	}
 }
 

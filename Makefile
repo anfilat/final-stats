@@ -9,7 +9,7 @@ build:
 
 .PHONY: run
 run: build
-	$(BIN) -config ./configs/config.toml
+	LOG_LEVEL=DEBUG $(BIN) -config ./configs/config.toml
 
 .PHONY: version
 version: build
@@ -25,3 +25,7 @@ install-lint-deps:
 .PHONY: lint
 lint: install-lint-deps
 	golangci-lint run ./...
+
+.PHONY: generate
+generate:
+	go generate ./...

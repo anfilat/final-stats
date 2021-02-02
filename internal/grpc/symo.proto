@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package stats;
+option go_package = ".;grpc";
+
+import "google/protobuf/timestamp.proto";
+
+message LoadAvg {
+  double Load1 = 1;
+  double Load5 = 2;
+  double Load15 = 3;
+}
+
+message Stats {
+  google.protobuf.Timestamp time = 1;
+  LoadAvg load_avg = 2;
+}
+
+message StatsRequest {
+  int32 N = 1;
+  int32 M = 2;
+}
+
+service Symo {
+  rpc GetStats (StatsRequest) returns (stream Stats) {}
+}

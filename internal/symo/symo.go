@@ -39,6 +39,7 @@ type LoadAvgData struct {
 
 type Clients interface {
 	Start(wg *sync.WaitGroup)
+	NewClient(client NewClient) <-chan Stat
 }
 
 type ClientsToHeartChan chan HeartCommand
@@ -55,6 +56,22 @@ const (
 type ClientsBeat struct {
 	Time   time.Time
 	Points Points
+}
+
+type GRPCServer interface {
+	Start(addr string) error
+	Stop(ctx context.Context) error
+}
+
+type NewClient struct {
+	Ctx context.Context
+	N   int
+	M   int
+}
+
+type Stat struct {
+	Time time.Time
+	Stat *Point
 }
 
 type Logger interface {
