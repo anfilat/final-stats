@@ -12,15 +12,16 @@ type clients struct {
 	toHeartChan   chan<- symo.HeartCommand
 	toClientsChan <-chan symo.ClientsBeat
 	clientsMutex  *sync.Mutex
-	clients       []grpcClient
+	clients       []*grpcClient
 	log           symo.Logger
 }
 
 type grpcClient struct {
-	ctx context.Context
-	n   int
-	m   int
-	ch  chan<- symo.Stat
+	ctx  context.Context
+	n    int
+	m    int
+	ch   chan<- symo.Stat
+	dead bool
 }
 
 func NewClients(ctx context.Context, log symo.Logger,
@@ -52,7 +53,7 @@ func (c *clients) Start(wg *sync.WaitGroup) {
 				if !ok {
 					return
 				}
-				c.SendStat(&data)
+				c.sendStat(&data)
 			}
 		}
 	}()
@@ -60,11 +61,12 @@ func (c *clients) Start(wg *sync.WaitGroup) {
 
 func (c *clients) NewClient(client symo.NewClient) <-chan symo.Stat {
 	ch := make(chan symo.Stat, 1)
-	cl := grpcClient{
-		ctx: client.Ctx,
-		n:   client.N,
-		m:   client.M,
-		ch:  ch,
+	cl := &grpcClient{
+		ctx:  client.Ctx,
+		n:    client.N,
+		m:    client.M,
+		ch:   ch,
+		dead: false,
 	}
 
 	c.clientsMutex.Lock()
@@ -79,11 +81,9 @@ func (c *clients) NewClient(client symo.NewClient) <-chan symo.Stat {
 	return ch
 }
 
-// TODO отслеживать отключение клиентов
-
-func (c *clients) SendStat(data *symo.ClientsBeat) {
+func (c *clients) sendStat(data *symo.ClientsBeat) {
 	// TODO заменить на реальный код
-	stat := symo.Stat{
+	stat := &symo.Stat{
 		Time: data.Time,
 		Stat: &symo.Point{
 			LoadAvg: &symo.LoadAvgData{
@@ -94,6 +94,11 @@ func (c *clients) SendStat(data *symo.ClientsBeat) {
 		},
 	}
 
+	c.sendToClients(stat)
+	c.delDeadClients()
+}
+
+func (c *clients) sendToClients(stat *symo.Stat) {
 	c.clientsMutex.Lock()
 	defer c.clientsMutex.Unlock()
 
@@ -101,7 +106,27 @@ func (c *clients) SendStat(data *symo.ClientsBeat) {
 		select {
 		case <-c.ctx.Done():
 			return
-		case client.ch <- stat:
+		case <-client.ctx.Done():
+			client.dead = true
+		case client.ch <- *stat:
 		}
+	}
+}
+
+func (c *clients) delDeadClients() {
+	c.clientsMutex.Lock()
+	defer c.clientsMutex.Unlock()
+
+	clients := make([]*grpcClient, 0, len(c.clients))
+	for _, client := range c.clients {
+		if client.dead {
+			continue
+		}
+		clients = append(clients, client)
+	}
+	c.clients = clients
+
+	if len(c.clients) == 0 {
+		c.toHeartChan <- symo.Stop
 	}
 }
