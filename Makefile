@@ -28,4 +28,13 @@ lint: install-lint-deps
 
 .PHONY: generate
 generate:
-	go generate ./...
+
+LOAD_BIN := "./bin/load"
+
+.PHONY: build-load
+build-load:
+	go build -v -o $(LOAD_BIN) ./cmd/load
+
+.PHONY: test-load
+test-load: build-load
+	$(LOAD_BIN)
