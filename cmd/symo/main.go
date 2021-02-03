@@ -63,7 +63,7 @@ func main() {
 	heartService := heart.NewHeart(mainCtx, logg, config.Metric, readers, toHeartChan, toClientsChan)
 	heartService.Start(wg)
 
-	grpcServer := grpc.NewServer(logg, clientsService)
+	grpcServer := grpc.NewServer(mainCtx, logg, clientsService)
 	go func() {
 		err := grpcServer.Start(":" + config.Server.Port)
 		if err != nil {

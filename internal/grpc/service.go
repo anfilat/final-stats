@@ -12,12 +12,14 @@ import (
 type Service struct {
 	UnimplementedSymoServer
 
+	ctx     context.Context // контекст приложения, сервис завершается по закрытию контекста
 	clients symo.Clients
 	log     symo.Logger
 }
 
-func NewService(log symo.Logger, clients symo.Clients) *Service {
+func NewService(ctx context.Context, log symo.Logger, clients symo.Clients) *Service {
 	return &Service{
+		ctx:     ctx,
 		clients: clients,
 		log:     log,
 	}
@@ -38,6 +40,8 @@ func (s *Service) GetStats(req *StatsRequest, srv Symo_GetStatsServer) error {
 L:
 	for {
 		select {
+		case <-s.ctx.Done():
+			break L
 		case <-srv.Context().Done():
 			s.log.Debug("client disconnected")
 			break L
