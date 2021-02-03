@@ -148,7 +148,6 @@ func (h *heart) processTick(now time.Time) {
 	}
 
 	select {
-	case <-h.ctx.Done():
 	case h.toClientsChan <- data:
 	default:
 	}

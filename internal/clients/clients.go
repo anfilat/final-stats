@@ -63,7 +63,6 @@ func (c *clients) NewClient(cl symo.NewClient) <-chan *symo.Stat {
 
 	if len(c.clients) == 1 {
 		select {
-		case <-c.ctx.Done():
 		case c.toHeartChan <- symo.Start:
 		default:
 		}
@@ -116,8 +115,6 @@ func (c *clients) sendToClients(list clientsList, stat *symo.Stat) (isDead bool)
 		}
 
 		select {
-		case <-c.ctx.Done():
-			return
 		case <-client.ctx.Done():
 			client.dead = true
 			isDead = true
