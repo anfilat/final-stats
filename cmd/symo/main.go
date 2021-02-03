@@ -57,14 +57,13 @@ func main() {
 	toHeartChan := make(symo.ClientsToHeartChan, 1)
 	toClientsChan := make(symo.HeartToClientsChan, 1)
 
-	clientsObj := clients.NewClients(mainCtx, logg, toHeartChan, toClientsChan)
-	clientsObj.Start(wg)
+	clientsService := clients.NewClients(mainCtx, logg, toHeartChan, toClientsChan)
+	clientsService.Start(wg)
 
-	heart.
-		NewHeart(mainCtx, logg, config.Metric, readers, toHeartChan, toClientsChan).
-		Start(wg)
+	heartService := heart.NewHeart(mainCtx, logg, config.Metric, readers, toHeartChan, toClientsChan)
+	heartService.Start(wg)
 
-	grpcServer := grpc.NewServer(logg, clientsObj)
+	grpcServer := grpc.NewServer(logg, clientsService)
 	go func() {
 		err := grpcServer.Start(":" + config.Server.Port)
 		if err != nil {

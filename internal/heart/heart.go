@@ -2,21 +2,22 @@ package heart
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
+const timeToGetMetric = 950 * time.Millisecond
+
 type heart struct {
-	ctx           context.Context
+	ctx           context.Context // контекст приложения, сервис завершается по закрытию контекста
 	pointsMutex   *sync.Mutex
-	points        symo.Points
-	workerChans   []chan<- symo.Beat
-	isClients     bool
-	config        symo.MetricConf
-	readers       symo.MetricReaders
+	points        symo.Points        // собираемые данные
+	workerChans   []chan<- symo.Beat // каналы горутин, ответственных за сбор конкретных метрик
+	isClients     bool               // сервис работает, только если есть клиенты
+	config        symo.MetricConf    // какие метрики собираются
+	readers       symo.MetricReaders // функции возвращающие конкретные метрики
 	toHeartChan   <-chan symo.HeartCommand
 	toClientsChan chan<- symo.ClientsBeat
 	log           symo.Logger
@@ -43,9 +44,9 @@ func (h *heart) Start(wg *sync.WaitGroup) {
 
 	go func() {
 		defer func() {
-			h.log.Debug("heart stooped")
 			close(h.toClientsChan)
 			h.unmountMetrics()
+			h.log.Debug("heart is stopped")
 			wg.Done()
 		}()
 
@@ -64,13 +65,7 @@ func (h *heart) Start(wg *sync.WaitGroup) {
 
 func (h *heart) mountMetrics(config symo.MetricConf, readers symo.MetricReaders) {
 	if config.Loadavg {
-		h.loadavg(h.newWorkerChan(), readers.LoadAvg)
-	}
-}
-
-func (h *heart) unmountMetrics() {
-	for _, ch := range h.workerChans {
-		close(ch)
+		go loadavg(h, h.newWorkerChan(), readers.LoadAvg)
 	}
 }
 
@@ -81,13 +76,22 @@ func (h *heart) newWorkerChan() chan symo.Beat {
 	return ch
 }
 
+func (h *heart) unmountMetrics() {
+	for _, ch := range h.workerChans {
+		close(ch)
+	}
+}
+
 func (h *heart) waitClients() {
 	select {
 	case <-h.ctx.Done():
-	case mess := <-h.toHeartChan:
+	case mess, ok := <-h.toHeartChan:
+		if !ok {
+			return
+		}
 		if mess == symo.Start {
 			h.isClients = true
-			h.log.Debug("start send stats")
+			h.log.Debug("start heart work")
 		}
 	}
 }
@@ -100,27 +104,36 @@ func (h *heart) work() {
 		select {
 		case <-h.ctx.Done():
 			return
-		case mess := <-h.toHeartChan:
+		case mess, ok := <-h.toHeartChan:
+			if !ok {
+				return
+			}
 			if mess == symo.Stop {
 				h.isClients = false
-				h.log.Debug("stop send stats")
+				h.log.Debug("pause heart work")
 				return
 			}
 		case now := <-ticker.C:
-			h.workPoint(now.Truncate(time.Second))
+			h.processTick(now.Truncate(time.Second))
 		}
 	}
 }
 
-func (h *heart) workPoint(now time.Time) {
+func (h *heart) processTick(now time.Time) {
+	h.log.Debug("tick ", now)
+
 	// добавляется новая точка для статистики за эту секунду
-	point := h.newPoint(now)
+	point := h.addPoint(now)
 
 	// точка отправляется всем горутинам, ответственным за получение части статистики для заполнения
 	for _, ch := range h.workerChans {
-		ch <- symo.Beat{
+		beat := symo.Beat{
 			Time:  now,
 			Point: point,
+		}
+		select {
+		case ch <- beat:
+		default:
 		}
 	}
 
@@ -131,16 +144,17 @@ func (h *heart) workPoint(now time.Time) {
 
 	data := symo.ClientsBeat{
 		Time:   now,
-		Points: h.CloneOldPoints(now),
+		Points: h.cloneOldPoints(now),
 	}
 
 	select {
 	case <-h.ctx.Done():
 	case h.toClientsChan <- data:
+	default:
 	}
 }
 
-func (h *heart) newPoint(now time.Time) *symo.Point {
+func (h *heart) addPoint(now time.Time) *symo.Point {
 	h.pointsMutex.Lock()
 	defer h.pointsMutex.Unlock()
 
@@ -163,7 +177,7 @@ func (h *heart) cleanPoints(now time.Time) {
 	}
 }
 
-func (h *heart) CloneOldPoints(now time.Time) symo.Points {
+func (h *heart) cloneOldPoints(now time.Time) symo.Points {
 	h.pointsMutex.Lock()
 	defer h.pointsMutex.Unlock()
 
@@ -172,37 +186,8 @@ func (h *heart) CloneOldPoints(now time.Time) symo.Points {
 		newPoint := *point
 		result[key] = &newPoint
 	}
+	// последняя, еще пустая точка удаляется
 	delete(result, now)
 
 	return result
-}
-
-func (h *heart) loadavg(ch <-chan symo.Beat, reader symo.LoadAvg) {
-	go func() {
-		for {
-			select {
-			case <-h.ctx.Done():
-				return
-			case beat, ok := <-ch:
-				if !ok {
-					return
-				}
-				func() {
-					ctx, cancel := context.WithTimeout(h.ctx, 950*time.Millisecond)
-					defer cancel()
-
-					loadAvg, err := reader(ctx)
-					if err != nil {
-						h.log.Debug(fmt.Errorf("cannot get load average: %w", err))
-						return
-					}
-
-					h.pointsMutex.Lock()
-					defer h.pointsMutex.Unlock()
-
-					beat.Point.LoadAvg = loadAvg
-				}()
-			}
-		}
-	}()
 }

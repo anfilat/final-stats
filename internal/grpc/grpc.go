@@ -37,8 +37,8 @@ func (g *grpcServer) Start(addr string) error {
 }
 
 func (g *grpcServer) Stop(_ context.Context) error {
-	g.log.Info("stopping grpc server...")
+	// TODO доработать
 	g.srv.GracefulStop()
-	g.log.Info("grpc server is stopped")
+	g.log.Debug("grpc server is stopped")
 	return nil
 }

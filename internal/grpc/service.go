@@ -30,9 +30,9 @@ func (s *Service) GetStats(req *StatsRequest, srv Symo_GetStatsServer) error {
 	defer cancel()
 
 	ch := s.clients.NewClient(symo.NewClient{
+		Ctx: ctx,
 		N:   int(req.N),
 		M:   int(req.M),
-		Ctx: ctx,
 	})
 
 L:
@@ -46,15 +46,7 @@ L:
 				break L
 			}
 
-			stat := data.Stat
-			message := &Stats{
-				Time: timestamppb.New(data.Time),
-				LoadAvg: &LoadAvg{
-					Load1:  stat.LoadAvg.Load1,
-					Load5:  stat.LoadAvg.Load5,
-					Load15: stat.LoadAvg.Load15,
-				},
-			}
+			message := dataToGRPC(&data)
 			if err := srv.Send(message); err != nil {
 				s.log.Debug(fmt.Errorf("unable to send message: %w", err))
 				break L
@@ -63,4 +55,17 @@ L:
 	}
 
 	return nil
+}
+
+func dataToGRPC(data *symo.Stat) *Stats {
+	stat := data.Stat
+
+	return &Stats{
+		Time: timestamppb.New(data.Time),
+		LoadAvg: &LoadAvg{
+			Load1:  stat.LoadAvg.Load1,
+			Load5:  stat.LoadAvg.Load5,
+			Load15: stat.LoadAvg.Load15,
+		},
+	}
 }
