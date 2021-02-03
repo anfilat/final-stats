@@ -3,29 +3,18 @@ package clients
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-// длина очереди на отправку данных клиенту. На случай временного замедления сети.
-const MaxQueueLen = 100
-
 type clients struct {
 	ctx           context.Context // контекст приложения, сервис завершается по закрытию контекста
 	clientsMutex  *sync.Mutex
-	clients       []*grpcClient // список клиентов
+	clients       clientsList // список клиентов
 	toHeartChan   chan<- symo.HeartCommand
 	toClientsChan <-chan symo.ClientsBeat
 	log           symo.Logger
-}
-
-// данные клиента.
-type grpcClient struct {
-	ctx  context.Context  // контекст клиента
-	n    int              // информация отправляется каждые N секунд
-	m    int              // информация усредняется за M секунд
-	ch   chan<- symo.Stat // переданный клиенту канал
-	dead bool             // контекст клиента закрыт, нужно удалить этого клиента из списка
 }
 
 func NewClients(ctx context.Context, log symo.Logger,
@@ -64,20 +53,13 @@ func (c *clients) Start(wg *sync.WaitGroup) {
 }
 
 // подключение нового клиента.
-func (c *clients) NewClient(client symo.NewClient) <-chan symo.Stat {
-	ch := make(chan symo.Stat, MaxQueueLen)
-	cl := &grpcClient{
-		ctx:  client.Ctx,
-		n:    client.N,
-		m:    client.M,
-		ch:   ch,
-		dead: false,
-	}
+func (c *clients) NewClient(cl symo.NewClient) <-chan symo.Stat {
+	client := newClient(cl)
 
 	c.clientsMutex.Lock()
 	defer c.clientsMutex.Unlock()
 
-	c.clients = append(c.clients, cl)
+	c.clients = append(c.clients, client)
 
 	if len(c.clients) == 1 {
 		select {
@@ -87,34 +69,44 @@ func (c *clients) NewClient(client symo.NewClient) <-chan symo.Stat {
 		}
 	}
 
-	return ch
+	return client.ch
 }
 
 func (c *clients) sendStat(data *symo.ClientsBeat) {
-	// TODO заменить на реальный код
-	stat := &symo.Stat{
-		Time: data.Time,
-		Stat: &symo.Point{
-			LoadAvg: &symo.LoadAvgData{
-				Load1:  0,
-				Load5:  0,
-				Load15: 0,
-			},
-		},
+	res := c.filterReadyClients(data.Time)
+
+	isDead := false
+	for m, list := range res {
+		isDead = isDead || c.sendToClients(list, makeSnapshot(data, m))
 	}
 
-	isDead := c.sendToClients(stat)
 	if isDead {
-		c.log.Debug("isDead")
+		c.log.Debug("is dead clients")
 		c.delDeadClients()
 	}
 }
 
-func (c *clients) sendToClients(stat *symo.Stat) (isDead bool) {
+// возвращает клиентов, которым надо отправить данные. Клиенты сгруппированы по M.
+// У возвращенных клиентов устанавливается время следующей отправки.
+func (c *clients) filterReadyClients(now time.Time) map[int]clientsList {
 	c.clientsMutex.Lock()
 	defer c.clientsMutex.Unlock()
 
+	result := make(map[int]clientsList)
 	for _, client := range c.clients {
+		if client.isReady(now) {
+			result[client.m] = append(result[client.m], client)
+			client.setNextReady(now)
+		}
+	}
+	return result
+}
+
+func (c *clients) sendToClients(list clientsList, stat *symo.Stat) (isDead bool) {
+	c.clientsMutex.Lock()
+	defer c.clientsMutex.Unlock()
+
+	for _, client := range list {
 		select {
 		case <-client.ctx.Done():
 			client.dead = true
@@ -140,7 +132,7 @@ func (c *clients) delDeadClients() {
 	c.clientsMutex.Lock()
 	defer c.clientsMutex.Unlock()
 
-	clients := make([]*grpcClient, 0, len(c.clients))
+	clients := make(clientsList, 0, len(c.clients))
 	for _, client := range c.clients {
 		if client.dead {
 			continue
