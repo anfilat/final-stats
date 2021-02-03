@@ -17,13 +17,13 @@ type grpcClient struct {
 	ctx   context.Context // контекст клиента
 	n     int             // информация отправляется каждые N секунд
 	m     int             // информация усредняется за M секунд
-	ch    chan symo.Stat  // переданный клиенту канал
+	ch    chan *symo.Stat // переданный клиенту канал
 	after time.Time       // когда отправлять следующий пакет данных
 	dead  bool            // контекст клиента закрыт, нужно удалить этого клиента из списка
 }
 
 func newClient(cl symo.NewClient) *grpcClient {
-	ch := make(chan symo.Stat, MaxQueueLen)
+	ch := make(chan *symo.Stat, MaxQueueLen)
 	client := &grpcClient{
 		ctx:  cl.Ctx,
 		n:    cl.N,

@@ -53,7 +53,7 @@ func (c *clients) Start(wg *sync.WaitGroup) {
 }
 
 // подключение нового клиента.
-func (c *clients) NewClient(cl symo.NewClient) <-chan symo.Stat {
+func (c *clients) NewClient(cl symo.NewClient) <-chan *symo.Stat {
 	client := newClient(cl)
 
 	c.clientsMutex.Lock()
@@ -121,7 +121,7 @@ func (c *clients) sendToClients(list clientsList, stat *symo.Stat) (isDead bool)
 		case <-client.ctx.Done():
 			client.dead = true
 			isDead = true
-		case client.ch <- *stat:
+		case client.ch <- stat:
 		default:
 		}
 	}

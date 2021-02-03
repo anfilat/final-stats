@@ -23,9 +23,9 @@ var loadTime int
 
 func init() {
 	flag.IntVar(&paramN, "n", 1, "Send stats every N seconds")
-	flag.IntVar(&paramM, "m", 5, "Send stats for last M seconds")
+	flag.IntVar(&paramM, "m", 10, "Send stats for last M seconds")
 	flag.IntVar(&count, "count", 10000, "Count of clients")
-	flag.IntVar(&loadTime, "time", 30, "Wait stats for time seconds")
+	flag.IntVar(&loadTime, "time", 60, "Wait stats for time seconds")
 }
 
 func main() {

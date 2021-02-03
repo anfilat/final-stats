@@ -31,10 +31,14 @@ generate:
 
 LOAD_BIN := "./bin/load"
 
+.PHONY: build-pprof
+build-pprof:
+	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" -tags pprof ./cmd/symo
+
 .PHONY: build-load
 build-load:
 	go build -v -o $(LOAD_BIN) ./cmd/load
 
 .PHONY: test-load
-test-load: build-load
+test-load: build-load build-pprof
 	$(LOAD_BIN)

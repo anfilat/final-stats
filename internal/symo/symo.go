@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // данные хранятся не более 10 минут.
@@ -18,7 +20,7 @@ type Heart interface {
 // сервис, хранящий всех подключенных клиентов и отсылающий им статистику.
 type Clients interface {
 	Start(wg *sync.WaitGroup)
-	NewClient(client NewClient) <-chan Stat
+	NewClient(client NewClient) <-chan *Stat
 }
 
 // канал для управления сервисом Heart из сервиса Clients. Если клиентов нет, статистику собирать не нужно.
@@ -84,8 +86,8 @@ type NewClient struct {
 
 // информация, отправляемая клиенту.
 type Stat struct {
-	Time time.Time // за какую секунду
-	Stat *Point    // усредненные данные
+	Time *timestamppb.Timestamp // за какую секунду
+	Stat *Point                 // усредненные данные
 }
 
 type Logger interface {

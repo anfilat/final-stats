@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
@@ -31,6 +29,7 @@ func (s *Service) GetStats(req *StatsRequest, srv Symo_GetStatsServer) error {
 	ctx, cancel := context.WithCancel(srv.Context())
 	defer cancel()
 
+	message := newMessage()
 	ch := s.clients.NewClient(symo.NewClient{
 		Ctx: ctx,
 		N:   int(req.N),
@@ -50,7 +49,7 @@ L:
 				break L
 			}
 
-			message := dataToGRPC(&data)
+			dataToGRPC(data, message)
 			if err := srv.Send(message); err != nil {
 				s.log.Debug(fmt.Errorf("unable to send message: %w", err))
 				break L
@@ -61,15 +60,21 @@ L:
 	return nil
 }
 
-func dataToGRPC(data *symo.Stat) *Stats {
-	stat := data.Stat
-
+func newMessage() *Stats {
 	return &Stats{
-		Time: timestamppb.New(data.Time),
 		LoadAvg: &LoadAvg{
-			Load1:  stat.LoadAvg.Load1,
-			Load5:  stat.LoadAvg.Load5,
-			Load15: stat.LoadAvg.Load15,
+			Load1:  0,
+			Load5:  0,
+			Load15: 0,
 		},
 	}
+}
+
+func dataToGRPC(data *symo.Stat, message *Stats) {
+	stat := data.Stat
+
+	message.Time = data.Time
+	message.LoadAvg.Load1 = stat.LoadAvg.Load1
+	message.LoadAvg.Load5 = stat.LoadAvg.Load5
+	message.LoadAvg.Load15 = stat.LoadAvg.Load15
 }

@@ -3,6 +3,8 @@ package clients
 import (
 	"time"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
@@ -11,7 +13,7 @@ func makeSnapshot(data *symo.ClientsBeat, m int) *symo.Stat {
 	count := 0
 
 	stat := &symo.Stat{
-		Time: data.Time,
+		Time: timestamppb.New(data.Time),
 		Stat: &symo.Point{
 			LoadAvg: &symo.LoadAvgData{
 				Load1:  0,
