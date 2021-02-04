@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/anfilat/final-stats/internal/clients"
+	"github.com/anfilat/final-stats/internal/cpu"
 	"github.com/anfilat/final-stats/internal/grpc"
 	"github.com/anfilat/final-stats/internal/heart"
 	"github.com/anfilat/final-stats/internal/loadavg"
@@ -52,6 +53,7 @@ func main() {
 
 	readers := symo.MetricReaders{
 		LoadAvg: loadavg.Read,
+		CPU:     cpu.Read,
 	}
 
 	toHeartChan := make(symo.ClientsToHeartChan, 1)

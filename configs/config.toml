@@ -6,3 +6,4 @@ port = "8000"
 
 [metric]
 loadavg = true
+cpu = true

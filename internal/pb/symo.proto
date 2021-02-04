@@ -11,9 +11,16 @@ message LoadAvg {
   double Load15 = 3;
 }
 
+message CPU {
+  double User = 1;
+  double System = 2;
+  double Idle = 3;
+}
+
 message Stats {
   google.protobuf.Timestamp time = 1;
   LoadAvg load_avg = 2;
+  CPU cpu = 3;
 }
 
 message StatsRequest {

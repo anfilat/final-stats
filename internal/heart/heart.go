@@ -40,7 +40,7 @@ func NewHeart(ctx context.Context, log symo.Logger, config symo.MetricConf, read
 
 func (h *heart) Start(wg *sync.WaitGroup) {
 	wg.Add(1)
-	h.mountMetrics(h.config, h.readers)
+	h.mountMetrics()
 
 	go func() {
 		defer func() {
@@ -63,9 +63,18 @@ func (h *heart) Start(wg *sync.WaitGroup) {
 	}()
 }
 
-func (h *heart) mountMetrics(config symo.MetricConf, readers symo.MetricReaders) {
-	if config.Loadavg {
-		go loadavg(h, h.newWorkerChan(), readers.LoadAvg)
+func (h *heart) mountMetrics() {
+	if h.config.Loadavg {
+		go loadavg(h, h.newWorkerChan(), h.readers.LoadAvg)
+	}
+	if h.config.CPU {
+		go cpu(h, h.newWorkerChan(), h.readers.CPU)
+	}
+}
+
+func (h *heart) initMetrics() {
+	if h.config.CPU {
+		initCPU(h)
 	}
 }
 
@@ -99,6 +108,8 @@ func (h *heart) waitClients() {
 func (h *heart) work() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+
+	h.initMetrics()
 
 	for {
 		select {

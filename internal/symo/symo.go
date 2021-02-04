@@ -55,11 +55,13 @@ type Points map[time.Time]*Point
 // набор метрик (снапшот). За секунду или усредненный.
 type Point struct {
 	LoadAvg *LoadAvgData
+	CPU     *CPUData
 }
 
 // набор функций, возвращающих свои метрики. Передается сервису Heart при его создании.
 type MetricReaders struct {
 	LoadAvg LoadAvg
+	CPU     CPU
 }
 
 // функция возвращающая среднюю загрузку системы.
@@ -70,6 +72,16 @@ type LoadAvgData struct {
 	Load1  float64
 	Load5  float64
 	Load15 float64
+}
+
+// функция возвращающая среднюю загрузку cpu.
+type CPU func(ctx context.Context, init bool) (*CPUData, error)
+
+// средняя загрузка cpu. В процентах.
+type CPUData struct {
+	User   float64
+	System float64
+	Idle   float64
 }
 
 type GRPCServer interface {
