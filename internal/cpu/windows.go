@@ -2,16 +2,11 @@
 
 package cpu
 
-import (
-	"context"
-
-	"github.com/anfilat/final-stats/internal/symo"
-)
-
-func Read(ctx context.Context, init bool) (*symo.CPUData, error) {
-	return &symo.CPUData{
-		User:   0,
-		System: 0,
-		Idle:   0,
+func getCPU() (*cpuData, error) {
+	return &cpuData{
+		total:  0,
+		user:   0,
+		system: 0,
+		idle:   0,
 	}, nil
 }

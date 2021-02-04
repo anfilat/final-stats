@@ -1,5 +1,3 @@
-// +build linux
-
 package cpu
 
 import (
@@ -29,6 +27,10 @@ func Read(_ context.Context, init bool) (*symo.CPUData, error) {
 	}
 
 	total := data.total - prevData.total
+	if total == 0 {
+		return &symo.CPUData{}, nil
+	}
+
 	result := &symo.CPUData{
 		User:   (data.user - prevData.user) / total * 100,
 		System: (data.system - prevData.system) / total * 100,
