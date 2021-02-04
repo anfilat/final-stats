@@ -3,17 +3,15 @@
 package loadavg
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestEqualityLinuxMethods(t *testing.T) {
-	ctx := context.Background()
-	avg1, err := fileAvg(ctx)
+func TestLoadAvgLinuxEqualityMethods(t *testing.T) {
+	avg1, err := fileAvg()
 	require.NoError(t, err)
-	avg2, err := sysInfoAvg(ctx)
+	avg2, err := sysInfoAvg()
 	require.NoError(t, err)
 	require.Equal(t, &avg1, &avg2)
 }

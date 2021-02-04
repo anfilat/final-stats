@@ -129,7 +129,7 @@ func runClient(timeoutCtx context.Context, wg *sync.WaitGroup, conn grpc.ClientC
 			}
 			// результаты первого клиента показываются, чтобы в консоли что-то менялось
 			if first {
-				log.Print(fmt.Sprintf("%s %5.3f", stats.Time.AsTime(), stats.LoadAvg.Load1))
+				log.Print(fmt.Sprintf("%s %5.2f %5.2f %5.2f", stats.Time.AsTime(), stats.Cpu.User, stats.Cpu.System, stats.Cpu.Idle))
 			}
 			// переподключение клиента
 			//nolint:gosec
