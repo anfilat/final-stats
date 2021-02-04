@@ -12,6 +12,7 @@ type clients struct {
 	ctx           context.Context // контекст приложения, сервис завершается по закрытию контекста
 	clientsMutex  *sync.Mutex
 	clients       clientsList // список клиентов
+	isDead        bool
 	toHeartChan   chan<- symo.HeartCommand
 	toClientsChan <-chan symo.ClientsBeat
 	log           symo.Logger
@@ -22,6 +23,7 @@ func NewClients(ctx context.Context, log symo.Logger,
 	return &clients{
 		ctx:           ctx,
 		clientsMutex:  &sync.Mutex{},
+		isDead:        false,
 		toHeartChan:   toHeartChan,
 		toClientsChan: toClientsChan,
 		log:           log,
@@ -53,7 +55,7 @@ func (c *clients) Start(wg *sync.WaitGroup) {
 }
 
 // подключение нового клиента.
-func (c *clients) NewClient(cl symo.NewClient) <-chan *symo.Stat {
+func (c *clients) NewClient(cl symo.NewClient) (<-chan *symo.Stat, func()) {
 	client := newClient(cl)
 
 	c.clientsMutex.Lock()
@@ -68,21 +70,23 @@ func (c *clients) NewClient(cl symo.NewClient) <-chan *symo.Stat {
 		}
 	}
 
-	return client.ch
+	return client.ch, func() {
+		c.clientsMutex.Lock()
+		defer c.clientsMutex.Unlock()
+
+		client.dead = true
+		c.isDead = true
+	}
 }
 
 func (c *clients) sendStat(data *symo.ClientsBeat) {
 	res := c.filterReadyClients(data.Time)
 
-	isDead := false
 	for m, list := range res {
-		isDead = c.sendToClients(list, makeSnapshot(data, m)) || isDead
+		c.sendToClients(list, makeSnapshot(data, m))
 	}
 
-	if isDead {
-		c.log.Debug("is dead clients")
-		c.delDeadClients()
-	}
+	c.delDeadClients()
 }
 
 // возвращает клиентов, которым надо отправить данные. Клиенты сгруппированы по M.
@@ -101,33 +105,29 @@ func (c *clients) filterReadyClients(now time.Time) map[int]clientsList {
 	return result
 }
 
-func (c *clients) sendToClients(list clientsList, stat *symo.Stat) (isDead bool) {
+func (c *clients) sendToClients(list clientsList, stat *symo.Stat) {
 	c.clientsMutex.Lock()
 	defer c.clientsMutex.Unlock()
 
 	for _, client := range list {
-		select {
-		case <-client.ctx.Done():
-			client.dead = true
-			isDead = true
+		if client.dead {
 			continue
-		default:
 		}
 
 		select {
-		case <-client.ctx.Done():
-			client.dead = true
-			isDead = true
 		case client.ch <- stat:
 		default:
 		}
 	}
-	return
 }
 
 func (c *clients) delDeadClients() {
 	c.clientsMutex.Lock()
 	defer c.clientsMutex.Unlock()
+
+	if !c.isDead {
+		return
+	}
 
 	clients := make(clientsList, 0, len(c.clients))
 	for _, client := range c.clients {

@@ -26,15 +26,12 @@ func NewService(ctx context.Context, log symo.Logger, clients symo.Clients) *Ser
 func (s *Service) GetStats(req *StatsRequest, srv Symo_GetStatsServer) error {
 	s.log.Debug("new client. Every ", req.N, " for ", req.M)
 
-	ctx, cancel := context.WithCancel(srv.Context())
-	defer cancel()
-
 	message := newMessage()
-	ch := s.clients.NewClient(symo.NewClient{
-		Ctx: ctx,
-		N:   int(req.N),
-		M:   int(req.M),
+	ch, del := s.clients.NewClient(symo.NewClient{
+		N: int(req.N),
+		M: int(req.M),
 	})
+	defer del()
 
 L:
 	for {

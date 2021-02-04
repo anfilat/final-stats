@@ -20,7 +20,7 @@ type Heart interface {
 // сервис, хранящий всех подключенных клиентов и отсылающий им статистику.
 type Clients interface {
 	Start(wg *sync.WaitGroup)
-	NewClient(client NewClient) <-chan *Stat
+	NewClient(client NewClient) (<-chan *Stat, func()) // канал для получения отсылаемых данных и ф-ия отключения клиента
 }
 
 // канал для управления сервисом Heart из сервиса Clients. Если клиентов нет, статистику собирать не нужно.
