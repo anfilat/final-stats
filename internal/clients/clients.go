@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anfilat/final-stats/internal/pb"
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
@@ -55,7 +56,7 @@ func (c *clients) Start(wg *sync.WaitGroup) {
 }
 
 // подключение нового клиента.
-func (c *clients) NewClient(cl symo.NewClient) (<-chan *symo.Stat, func()) {
+func (c *clients) NewClient(cl symo.NewClient) (<-chan *pb.Stats, func()) {
 	client := newClient(cl)
 
 	c.clientsMutex.Lock()
@@ -105,7 +106,7 @@ func (c *clients) filterReadyClients(now time.Time) map[int]clientsList {
 	return result
 }
 
-func (c *clients) sendToClients(list clientsList, stat *symo.Stat) {
+func (c *clients) sendToClients(list clientsList, stats *pb.Stats) {
 	c.clientsMutex.Lock()
 	defer c.clientsMutex.Unlock()
 
@@ -115,7 +116,7 @@ func (c *clients) sendToClients(list clientsList, stat *symo.Stat) {
 		}
 
 		select {
-		case client.ch <- stat:
+		case client.ch <- stats:
 		default:
 		}
 	}

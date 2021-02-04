@@ -27,7 +27,6 @@ func NewService(ctx context.Context, log symo.Logger, clients symo.Clients) *Ser
 func (s *Service) GetStats(req *pb.StatsRequest, srv pb.Symo_GetStatsServer) error {
 	s.log.Debug("new client. Every ", req.N, " for ", req.M)
 
-	message := newMessage()
 	ch, del := s.clients.NewClient(symo.NewClient{
 		N: int(req.N),
 		M: int(req.M),
@@ -47,8 +46,7 @@ L:
 				break L
 			}
 
-			dataToGRPC(data, message)
-			if err := srv.Send(message); err != nil {
+			if err := srv.Send(data); err != nil {
 				s.log.Debug(fmt.Errorf("unable to send message: %w", err))
 				break L
 			}
@@ -56,23 +54,4 @@ L:
 	}
 
 	return nil
-}
-
-func newMessage() *pb.Stats {
-	return &pb.Stats{
-		LoadAvg: &pb.LoadAvg{
-			Load1:  0,
-			Load5:  0,
-			Load15: 0,
-		},
-	}
-}
-
-func dataToGRPC(data *symo.Stat, message *pb.Stats) {
-	stat := data.Stat
-
-	message.Time = data.Time
-	message.LoadAvg.Load1 = stat.LoadAvg.Load1
-	message.LoadAvg.Load5 = stat.LoadAvg.Load5
-	message.LoadAvg.Load15 = stat.LoadAvg.Load15
 }

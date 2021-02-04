@@ -5,23 +5,17 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/anfilat/final-stats/internal/pb"
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func makeSnapshot(data *symo.ClientsBeat, m int) *symo.Stat {
+func makeSnapshot(data *symo.ClientsBeat, m int) *pb.Stats {
 	from := data.Time.Add(time.Duration(-m) * time.Second)
 	count := 0
 
-	stat := &symo.Stat{
-		Time: timestamppb.New(data.Time),
-		Stat: &symo.Point{
-			LoadAvg: &symo.LoadAvgData{
-				Load1:  0,
-				Load5:  0,
-				Load15: 0,
-			},
-		},
-	}
+	load1 := 0.0
+	load5 := 0.0
+	load15 := 0.0
 
 	for tm, point := range data.Points {
 		if tm.Before(from) {
@@ -29,16 +23,23 @@ func makeSnapshot(data *symo.ClientsBeat, m int) *symo.Stat {
 		}
 		count++
 
-		stat.Stat.LoadAvg.Load1 += point.LoadAvg.Load1
-		stat.Stat.LoadAvg.Load5 += point.LoadAvg.Load5
-		stat.Stat.LoadAvg.Load15 += point.LoadAvg.Load15
+		load1 += point.LoadAvg.Load1
+		load5 += point.LoadAvg.Load5
+		load15 += point.LoadAvg.Load15
 	}
 
 	if count > 1 {
-		stat.Stat.LoadAvg.Load1 /= float64(count)
-		stat.Stat.LoadAvg.Load5 /= float64(count)
-		stat.Stat.LoadAvg.Load15 /= float64(count)
+		load1 /= float64(count)
+		load5 /= float64(count)
+		load15 /= float64(count)
 	}
 
-	return stat
+	return &pb.Stats{
+		Time: timestamppb.New(data.Time),
+		LoadAvg: &pb.LoadAvg{
+			Load1:  load1,
+			Load5:  load5,
+			Load15: load15,
+		},
+	}
 }

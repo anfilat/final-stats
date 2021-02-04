@@ -3,6 +3,7 @@ package clients
 import (
 	"time"
 
+	"github.com/anfilat/final-stats/internal/pb"
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
@@ -13,15 +14,15 @@ type clientsList []*grpcClient
 
 // данные клиента.
 type grpcClient struct {
-	n     int             // информация отправляется каждые N секунд
-	m     int             // информация усредняется за M секунд
-	ch    chan *symo.Stat // переданный клиенту канал
-	after time.Time       // когда отправлять следующий пакет данных
-	dead  bool            // контекст клиента закрыт, нужно удалить этого клиента из списка
+	n     int            // информация отправляется каждые N секунд
+	m     int            // информация усредняется за M секунд
+	ch    chan *pb.Stats // переданный клиенту канал
+	after time.Time      // когда отправлять следующий пакет данных
+	dead  bool           // контекст клиента закрыт, нужно удалить этого клиента из списка
 }
 
 func newClient(cl symo.NewClient) *grpcClient {
-	ch := make(chan *symo.Stat, MaxQueueLen)
+	ch := make(chan *pb.Stats, MaxQueueLen)
 	client := &grpcClient{
 		n:    cl.N,
 		m:    cl.M,
