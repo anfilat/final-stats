@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -16,16 +19,20 @@ import (
 	grpcClient "github.com/anfilat/final-stats/internal/grpc"
 )
 
-var paramN int
-var paramM int
+var nFrom int
+var nTo int
+var mFrom int
+var mTo int
 var count int
 var loadTime int
 
 func init() {
-	flag.IntVar(&paramN, "n", 1, "Send stats every N seconds")
-	flag.IntVar(&paramM, "m", 10, "Send stats for last M seconds")
-	flag.IntVar(&count, "count", 10000, "Count of clients")
-	flag.IntVar(&loadTime, "time", 60, "Wait stats for time seconds")
+	flag.IntVar(&nFrom, "nf", 1, "Send stats every N seconds. Low limit")
+	flag.IntVar(&nTo, "nt", 5, "Send stats every N seconds. High limit")
+	flag.IntVar(&mFrom, "mf", 5, "Send stats for last M seconds. Low limit")
+	flag.IntVar(&mTo, "mt", 30, "Send stats for last M seconds. High limit")
+	flag.IntVar(&count, "count", 100000, "Count of clients")
+	flag.IntVar(&loadTime, "time", 600, "Wait stats for time seconds")
 }
 
 func main() {
@@ -34,7 +41,22 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	cmd := exec.CommandContext(ctx, "./bin/symo")
-	err := cmd.Start()
+	cmd.Env = append(os.Environ(),
+		"LOG_LEVEL=INFO",
+	)
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			log.Print("server: ", scanner.Text())
+		}
+	}()
+
+	err = cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,41 +79,63 @@ func load() {
 	defer cancel()
 
 	wg := &sync.WaitGroup{}
-	for i := 0; i < count; i++ {
-		runClient(ctx, wg, conn, i)
+	runClient(ctx, wg, conn, true, nFrom, mFrom)
+	for i := 1; i < count; i++ {
+		n := nFrom
+		if nTo > nFrom {
+			//nolint:gosec
+			n += rand.Intn(nTo - nFrom)
+		}
+		m := mFrom
+		if mTo > mFrom {
+			//nolint:gosec
+			m += rand.Intn(mTo - mFrom)
+		}
+		runClient(ctx, wg, conn, false, n, m)
 	}
 	wg.Wait()
 }
 
-func runClient(ctx context.Context, wg *sync.WaitGroup, conn grpc.ClientConnInterface, index int) {
-	client := grpcClient.NewSymoClient(conn)
-	req := &grpcClient.StatsRequest{
-		N: int32(paramN),
-		M: int32(paramM),
-	}
-	reqClient, err := client.GetStats(ctx, req)
-	if err != nil {
-		log.Print(fmt.Errorf("client request fail: %w", err))
-		return
-	}
-
+func runClient(timeoutCtx context.Context, wg *sync.WaitGroup, conn grpc.ClientConnInterface, first bool, n, m int) {
 	wg.Add(1)
+
 	go func() {
 		defer wg.Done()
 
+		ctx, cancel := context.WithCancel(timeoutCtx)
+		defer cancel()
+
+		client := grpcClient.NewSymoClient(conn)
+		req := &grpcClient.StatsRequest{
+			N: int32(n),
+			M: int32(m),
+		}
+		reqClient, err := client.GetStats(ctx, req)
+		if err != nil {
+			log.Print(fmt.Errorf("client request fail: %w", err))
+			return
+		}
+
 		for {
 			stats, err := reqClient.Recv()
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) ||
+				errors.Is(ctx.Err(), context.Canceled) ||
+				errors.Is(err, io.EOF) {
 				return
 			}
-			if errors.Is(err, io.EOF) {
-				return
-			} else if err != nil {
+			if err != nil {
 				log.Print(fmt.Errorf("error: %w", err))
 				return
 			}
-			if index == 0 {
-				log.Print(stats)
+			// результаты первого клиента показываются, чтобы в консоли что-то менялось
+			if first {
+				log.Print(fmt.Sprintf("%s %5.3f", stats.Time.AsTime(), stats.LoadAvg.Load1))
+			}
+			// переподключение клиента
+			//nolint:gosec
+			if !first && rand.Float64() < 0.1 {
+				cancel()
+				runClient(timeoutCtx, wg, conn, first, n, m)
 			}
 		}
 	}()
