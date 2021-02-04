@@ -76,7 +76,7 @@ func (c *clients) sendStat(data *symo.ClientsBeat) {
 
 	isDead := false
 	for m, list := range res {
-		isDead = isDead || c.sendToClients(list, makeSnapshot(data, m))
+		isDead = c.sendToClients(list, makeSnapshot(data, m)) || isDead
 	}
 
 	if isDead {
@@ -91,7 +91,7 @@ func (c *clients) filterReadyClients(now time.Time) map[int]clientsList {
 	c.clientsMutex.Lock()
 	defer c.clientsMutex.Unlock()
 
-	result := make(map[int]clientsList)
+	result := make(map[int]clientsList, len(c.clients))
 	for _, client := range c.clients {
 		if client.isReady(now) {
 			result[client.m] = append(result[client.m], client)
@@ -110,7 +110,7 @@ func (c *clients) sendToClients(list clientsList, stat *symo.Stat) (isDead bool)
 		case <-client.ctx.Done():
 			client.dead = true
 			isDead = true
-			break
+			continue
 		default:
 		}
 
