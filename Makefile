@@ -28,6 +28,7 @@ lint: install-lint-deps
 
 .PHONY: generate
 generate:
+	go generate ./...
 
 LOAD_BIN := "./bin/load"
 

@@ -1,4 +1,3 @@
-//go:generate protoc -I "/usr/local/include/" --proto_path=. --go_out=. --go-grpc_out=. ./symo.proto
 package grpc
 
 import (
@@ -7,6 +6,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/anfilat/final-stats/internal/pb"
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
@@ -32,7 +32,7 @@ func (g *grpcServer) Start(addr string) error {
 	}
 
 	g.srv = grpc.NewServer()
-	RegisterSymoServer(g.srv, NewService(g.ctx, g.log, g.clients))
+	pb.RegisterSymoServer(g.srv, NewService(g.ctx, g.log, g.clients))
 
 	g.log.Debug("starting grpc server on ", addr)
 	return g.srv.Serve(lsn)

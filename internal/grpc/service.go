@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anfilat/final-stats/internal/pb"
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
 type Service struct {
-	UnimplementedSymoServer
+	pb.UnimplementedSymoServer
 
 	ctx     context.Context // контекст приложения, сервис завершается по закрытию контекста
 	clients symo.Clients
@@ -23,7 +24,7 @@ func NewService(ctx context.Context, log symo.Logger, clients symo.Clients) *Ser
 	}
 }
 
-func (s *Service) GetStats(req *StatsRequest, srv Symo_GetStatsServer) error {
+func (s *Service) GetStats(req *pb.StatsRequest, srv pb.Symo_GetStatsServer) error {
 	s.log.Debug("new client. Every ", req.N, " for ", req.M)
 
 	message := newMessage()
@@ -57,9 +58,9 @@ L:
 	return nil
 }
 
-func newMessage() *Stats {
-	return &Stats{
-		LoadAvg: &LoadAvg{
+func newMessage() *pb.Stats {
+	return &pb.Stats{
+		LoadAvg: &pb.LoadAvg{
 			Load1:  0,
 			Load5:  0,
 			Load15: 0,
@@ -67,7 +68,7 @@ func newMessage() *Stats {
 	}
 }
 
-func dataToGRPC(data *symo.Stat, message *Stats) {
+func dataToGRPC(data *symo.Stat, message *pb.Stats) {
 	stat := data.Stat
 
 	message.Time = data.Time
