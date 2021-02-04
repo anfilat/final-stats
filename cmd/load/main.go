@@ -31,7 +31,7 @@ func init() {
 	flag.IntVar(&nTo, "nt", 5, "Send stats every N seconds. High limit")
 	flag.IntVar(&mFrom, "mf", 5, "Send stats for last M seconds. Low limit")
 	flag.IntVar(&mTo, "mt", 30, "Send stats for last M seconds. High limit")
-	flag.IntVar(&count, "count", 100000, "Count of clients")
+	flag.IntVar(&count, "count", 100_000, "Count of clients")
 	flag.IntVar(&loadTime, "time", 600, "Wait stats for time seconds")
 }
 

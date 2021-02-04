@@ -13,7 +13,6 @@ type clients struct {
 	ctx           context.Context // контекст приложения, сервис завершается по закрытию контекста
 	clientsMutex  *sync.Mutex
 	clients       clientsList // список клиентов
-	isDead        bool
 	toHeartChan   chan<- symo.HeartCommand
 	toClientsChan <-chan symo.ClientsBeat
 	log           symo.Logger
@@ -24,7 +23,6 @@ func NewClients(ctx context.Context, log symo.Logger,
 	return &clients{
 		ctx:           ctx,
 		clientsMutex:  &sync.Mutex{},
-		isDead:        false,
 		toHeartChan:   toHeartChan,
 		toClientsChan: toClientsChan,
 		log:           log,
@@ -76,59 +74,16 @@ func (c *clients) NewClient(cl symo.NewClient) (<-chan *pb.Stats, func()) {
 		defer c.clientsMutex.Unlock()
 
 		client.dead = true
-		c.isDead = true
 	}
 }
 
 func (c *clients) sendStat(data *symo.ClientsBeat) {
-	res := c.filterReadyClients(data.Time)
-
-	for m, list := range res {
-		c.sendToClients(list, makeSnapshot(data, m))
-	}
-
-	c.delDeadClients()
-}
-
-// возвращает клиентов, которым надо отправить данные. Клиенты сгруппированы по M.
-// У возвращенных клиентов устанавливается время следующей отправки.
-func (c *clients) filterReadyClients(now time.Time) map[int]clientsList {
+	from := time.Now()
 	c.clientsMutex.Lock()
 	defer c.clientsMutex.Unlock()
 
-	result := make(map[int]clientsList, len(c.clients))
-	for _, client := range c.clients {
-		if client.isReady(now) {
-			result[client.m] = append(result[client.m], client)
-			client.setNextReady(now)
-		}
-	}
-	return result
-}
-
-func (c *clients) sendToClients(list clientsList, stats *pb.Stats) {
-	c.clientsMutex.Lock()
-	defer c.clientsMutex.Unlock()
-
-	for _, client := range list {
-		if client.dead {
-			continue
-		}
-
-		select {
-		case client.ch <- stats:
-		default:
-		}
-	}
-}
-
-func (c *clients) delDeadClients() {
-	c.clientsMutex.Lock()
-	defer c.clientsMutex.Unlock()
-
-	if !c.isDead {
-		return
-	}
+	now := data.Time
+	results := make(map[int]*pb.Stats)
 
 	clients := make(clientsList, 0, len(c.clients))
 	for _, client := range c.clients {
@@ -136,6 +91,22 @@ func (c *clients) delDeadClients() {
 			continue
 		}
 		clients = append(clients, client)
+
+		if !client.isReady(now) {
+			continue
+		}
+		client.setNextReady(now)
+
+		stats, ok := results[client.m]
+		if !ok {
+			stats = makeSnapshot(data, client.m)
+			results[client.m] = stats
+		}
+
+		select {
+		case client.ch <- stats:
+		default:
+		}
 	}
 	c.clients = clients
 
@@ -145,4 +116,5 @@ func (c *clients) delDeadClients() {
 		default:
 		}
 	}
+	c.log.Info(time.Since(from))
 }

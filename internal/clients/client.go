@@ -35,7 +35,7 @@ func newClient(cl symo.NewClient) *grpcClient {
 }
 
 func (g *grpcClient) isReady(now time.Time) bool {
-	return !g.dead && now.After(g.after)
+	return now.After(g.after)
 }
 
 func (g *grpcClient) setNextReady(now time.Time) {
