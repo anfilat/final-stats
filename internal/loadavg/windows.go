@@ -76,6 +76,7 @@ func loadAvgGoroutine() {
 
 // copied from https://github.com/shirou/gopsutil
 
+//nolint:golint,stylecheck
 const (
 	PDH_FMT_DOUBLE   = 0x00000200
 	PDH_INVALID_DATA = 0xc0000bc6
@@ -135,6 +136,7 @@ func processorQueueLengthCounter() (*win32PerformanceCounter, error) {
 	return &counter, nil
 }
 
+//nolint:golint,stylecheck
 type PDH_FMT_COUNTERVALUE_DOUBLE struct {
 	CStatus     uint32
 	DoubleValue float64
