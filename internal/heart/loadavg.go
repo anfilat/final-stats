@@ -2,34 +2,35 @@ package heart
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func loadavg(h *heart, ch <-chan symo.Beat, reader symo.LoadAvg) {
+func loadavg(ctx context.Context, ch <-chan symo.Beat, reader symo.LoadAvg, log symo.Logger) {
 	for {
 		select {
-		case <-h.ctx.Done():
+		case <-ctx.Done():
 			return
 		case beat, ok := <-ch:
 			if !ok {
 				return
 			}
 			func() {
-				ctx, cancel := context.WithTimeout(h.ctx, timeToGetMetric)
+				workCtx, cancel := context.WithTimeout(ctx, timeToGetMetric)
 				defer cancel()
 
-				loadAvg, err := reader(ctx)
+				data, err := reader(workCtx)
+				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+					return
+				}
 				if err != nil {
-					h.log.Debug(fmt.Errorf("cannot get load average: %w", err))
+					log.Debug(fmt.Errorf("cannot get load average: %w", err))
 					return
 				}
 
-				h.pointsMutex.Lock()
-				defer h.pointsMutex.Unlock()
-
-				beat.Point.LoadAvg = loadAvg
+				beat.Point.LoadAvg = data
 			}()
 		}
 	}

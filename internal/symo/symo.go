@@ -2,7 +2,7 @@ package symo
 
 import (
 	"context"
-	"sync"
+	"errors"
 	"time"
 
 	"github.com/anfilat/final-stats/internal/pb"
@@ -14,14 +14,21 @@ const MaxOldPoints = MaxSeconds * time.Second
 
 // сервис, запускающий каждую секунду сбор статистики и ее отправку клиентам.
 type Heart interface {
-	Start(wg *sync.WaitGroup)
+	Start(ctx context.Context, config MetricConf, readers MetricReaders,
+		toHeartChan <-chan HeartCommand, toClientsChan chan<- ClientsBeat)
+	Stop(ctx context.Context)
 }
 
 // сервис, хранящий всех подключенных клиентов и отсылающий им статистику.
 type Clients interface {
-	Start(wg *sync.WaitGroup)
-	NewClient(client NewClient) (<-chan *pb.Stats, func()) // канал для получения отсылаемых данных и ф-ия отключения клиента
+	Start(ctx context.Context, toHeartChan chan<- HeartCommand, toClientsChan <-chan ClientsBeat)
+	Stop(ctx context.Context)
+	// канал для получения отсылаемых данных и ф-ия отключения клиента
+	NewClient(client NewClient) (<-chan *pb.Stats, func(), error)
 }
+
+// ошибка, возвращаемая grpc запросу, если приложение останавливается
+var ErrStopped = errors.New("service is stopped")
 
 // канал для управления сервисом Heart из сервиса Clients. Если клиентов нет, статистику собирать не нужно.
 type ClientsToHeartChan chan HeartCommand
@@ -85,8 +92,8 @@ type CPUData struct {
 }
 
 type GRPCServer interface {
-	Start(addr string) error
-	Stop(ctx context.Context) error
+	Start(addr string, clients Clients) error
+	Stop(ctx context.Context)
 }
 
 // информация, передаваемая из grpc запроса сервису клиентов.

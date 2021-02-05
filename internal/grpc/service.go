@@ -1,8 +1,10 @@
 package grpc
 
 import (
-	"context"
 	"fmt"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/anfilat/final-stats/internal/pb"
 	"github.com/anfilat/final-stats/internal/symo"
@@ -11,14 +13,12 @@ import (
 type Service struct {
 	pb.UnimplementedSymoServer
 
-	ctx     context.Context // контекст приложения, сервис завершается по закрытию контекста
 	clients symo.Clients
 	log     symo.Logger
 }
 
-func NewService(ctx context.Context, log symo.Logger, clients symo.Clients) *Service {
+func newService(log symo.Logger, clients symo.Clients) *Service {
 	return &Service{
-		ctx:     ctx,
 		clients: clients,
 		log:     log,
 	}
@@ -27,17 +27,25 @@ func NewService(ctx context.Context, log symo.Logger, clients symo.Clients) *Ser
 func (s *Service) GetStats(req *pb.StatsRequest, srv pb.Symo_GetStatsServer) error {
 	s.log.Debug("new client. Every ", req.N, " for ", req.M)
 
-	ch, del := s.clients.NewClient(symo.NewClient{
-		N: int(req.N),
-		M: int(req.M),
-	})
+	n := int(req.N)
+	m := int(req.M)
+
+	if n > symo.MaxSeconds {
+		return status.Error(codes.InvalidArgument, fmt.Sprintf("N must be less than %v seconds", symo.MaxSeconds))
+	}
+	if m > symo.MaxSeconds {
+		return status.Error(codes.InvalidArgument, fmt.Sprintf("M must be less than %v seconds", symo.MaxSeconds))
+	}
+
+	ch, del, err := s.clients.NewClient(symo.NewClient{N: n, M: m})
+	if err != nil {
+		return status.Error(codes.InvalidArgument, "service is closing")
+	}
 	defer del()
 
 L:
 	for {
 		select {
-		case <-s.ctx.Done():
-			break L
 		case <-srv.Context().Done():
 			s.log.Debug("client disconnected")
 			break L

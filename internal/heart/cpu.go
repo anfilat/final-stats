@@ -2,44 +2,48 @@ package heart
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func initCPU(h *heart) {
-	ctx, cancel := context.WithTimeout(h.ctx, timeToGetMetric)
+func initCPU(ctx context.Context, reader symo.CPU, log symo.Logger) {
+	workCtx, cancel := context.WithTimeout(ctx, timeToGetMetric)
 	defer cancel()
 
-	_, err := h.readers.CPU(ctx, true)
+	_, err := reader(workCtx, true)
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return
+	}
 	if err != nil {
-		h.log.Debug(fmt.Errorf("cannot init cpu: %w", err))
+		log.Debug(fmt.Errorf("cannot init cpu: %w", err))
 	}
 }
 
-func cpu(h *heart, ch <-chan symo.Beat, reader symo.CPU) {
+func cpu(ctx context.Context, ch <-chan symo.Beat, reader symo.CPU, log symo.Logger) {
 	for {
 		select {
-		case <-h.ctx.Done():
+		case <-ctx.Done():
 			return
 		case beat, ok := <-ch:
 			if !ok {
 				return
 			}
 			func() {
-				ctx, cancel := context.WithTimeout(h.ctx, timeToGetMetric)
+				workCtx, cancel := context.WithTimeout(ctx, timeToGetMetric)
 				defer cancel()
 
-				cpu, err := reader(ctx, false)
+				data, err := reader(workCtx, false)
+				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+					return
+				}
 				if err != nil {
-					h.log.Debug(fmt.Errorf("cannot get cpu: %w", err))
+					log.Debug(fmt.Errorf("cannot get cpu: %w", err))
 					return
 				}
 
-				h.pointsMutex.Lock()
-				defer h.pointsMutex.Unlock()
-
-				beat.Point.CPU = cpu
+				beat.Point.CPU = data
 			}()
 		}
 	}

@@ -10,55 +10,82 @@ import (
 )
 
 type clients struct {
-	ctx           context.Context // контекст приложения, сервис завершается по закрытию контекста
-	clientsMutex  *sync.Mutex
+	ctx           context.Context // управление остановкой сервиса
+	ctxCancel     context.CancelFunc
+	closedCh      chan interface{}
+	mutex         *sync.Mutex
 	clients       clientsList // список клиентов
 	toHeartChan   chan<- symo.HeartCommand
 	toClientsChan <-chan symo.ClientsBeat
 	log           symo.Logger
 }
 
-func NewClients(ctx context.Context, log symo.Logger,
-	toHeartChan chan<- symo.HeartCommand, toClientsChan <-chan symo.ClientsBeat) symo.Clients {
+func NewClients(log symo.Logger) symo.Clients {
 	return &clients{
-		ctx:           ctx,
-		clientsMutex:  &sync.Mutex{},
-		toHeartChan:   toHeartChan,
-		toClientsChan: toClientsChan,
-		log:           log,
+		log: log,
 	}
 }
 
-func (c *clients) Start(wg *sync.WaitGroup) {
-	wg.Add(1)
+func (c *clients) Start(ctx context.Context, toHeartChan chan<- symo.HeartCommand, toClientsChan <-chan symo.ClientsBeat) {
+	c.toHeartChan = toHeartChan
+	c.toClientsChan = toClientsChan
 
-	go func() {
-		defer func() {
-			close(c.toHeartChan)
-			c.log.Debug("clients is stopped")
-			wg.Done()
-		}()
+	c.ctx, c.ctxCancel = context.WithCancel(ctx)
+	c.closedCh = make(chan interface{})
+	c.mutex = &sync.Mutex{}
+	c.clients = nil
 
-		for {
-			select {
-			case <-c.ctx.Done():
+	go c.work()
+}
+
+func (c *clients) Stop(ctx context.Context) {
+	c.ctxCancel()
+
+	select {
+	case <-ctx.Done():
+	case <-c.closedCh:
+	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	for _, client := range c.clients {
+		client.close()
+	}
+
+	close(c.toHeartChan)
+	c.log.Debug("clients is stopped")
+}
+
+func (c *clients) work() {
+	for {
+		select {
+		case <-c.ctx.Done():
+			c.mutex.Lock()
+			close(c.closedCh)
+			c.mutex.Unlock()
+			return
+		case data, ok := <-c.toClientsChan:
+			if !ok {
 				return
-			case data, ok := <-c.toClientsChan:
-				if !ok {
-					return
-				}
-				c.sendStat(&data)
 			}
+			c.sendStat(&data)
 		}
-	}()
+	}
 }
 
 // подключение нового клиента.
-func (c *clients) NewClient(cl symo.NewClient) (<-chan *pb.Stats, func()) {
-	client := newClient(cl)
+func (c *clients) NewClient(cl symo.NewClient) (<-chan *pb.Stats, func(), error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	c.clientsMutex.Lock()
-	defer c.clientsMutex.Unlock()
+	select {
+	case <-c.closedCh:
+		return nil, nil, symo.ErrStopped
+	default:
+	}
+
+	client := newClient(cl)
 
 	c.clients = append(c.clients, client)
 
@@ -69,18 +96,20 @@ func (c *clients) NewClient(cl symo.NewClient) (<-chan *pb.Stats, func()) {
 		}
 	}
 
-	return client.ch, func() {
-		c.clientsMutex.Lock()
-		defer c.clientsMutex.Unlock()
+	delClient := func() {
+		c.mutex.Lock()
+		defer c.mutex.Unlock()
 
 		client.dead = true
 	}
+
+	return client.ch, delClient, nil
 }
 
 func (c *clients) sendStat(data *symo.ClientsBeat) {
 	from := time.Now()
-	c.clientsMutex.Lock()
-	defer c.clientsMutex.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	now := data.Time
 	results := make(map[int]*pb.Stats)
@@ -88,6 +117,7 @@ func (c *clients) sendStat(data *symo.ClientsBeat) {
 	clients := make(clientsList, 0, len(c.clients))
 	for _, client := range c.clients {
 		if client.dead {
+			client.close()
 			continue
 		}
 		clients = append(clients, client)

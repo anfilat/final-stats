@@ -11,35 +11,41 @@ import (
 )
 
 type grpcServer struct {
-	ctx     context.Context // контекст приложения
-	srv     *grpc.Server
-	clients symo.Clients
-	log     symo.Logger
+	srv *grpc.Server
+	log symo.Logger
 }
 
-func NewServer(ctx context.Context, log symo.Logger, clients symo.Clients) symo.GRPCServer {
+func NewServer(log symo.Logger) symo.GRPCServer {
 	return &grpcServer{
-		ctx:     ctx,
-		clients: clients,
-		log:     log,
+		log: log,
 	}
 }
 
-func (g *grpcServer) Start(addr string) error {
+func (g *grpcServer) Start(addr string, clients symo.Clients) error {
 	lsn, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
 
 	g.srv = grpc.NewServer()
-	pb.RegisterSymoServer(g.srv, NewService(g.ctx, g.log, g.clients))
+	pb.RegisterSymoServer(g.srv, newService(g.log, clients))
 
 	g.log.Debug("starting grpc server on ", addr)
 	return g.srv.Serve(lsn)
 }
 
-func (g *grpcServer) Stop(_ context.Context) error {
-	g.srv.GracefulStop()
+func (g *grpcServer) Stop(ctx context.Context) {
+	stopped := make(chan interface{})
+	go func() {
+		g.srv.GracefulStop()
+		close(stopped)
+	}()
+
+	select {
+	case <-ctx.Done():
+		g.srv.Stop()
+	case <-stopped:
+	}
+
 	g.log.Debug("grpc server is stopped")
-	return nil
 }

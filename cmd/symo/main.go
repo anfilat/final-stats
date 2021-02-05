@@ -6,9 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
-	"time"
 
 	"github.com/anfilat/final-stats/internal/clients"
 	"github.com/anfilat/final-stats/internal/cpu"
@@ -49,7 +47,7 @@ func main() {
 
 	logg.Info("starting system monitor")
 
-	wg := &sync.WaitGroup{}
+	stopper := newServiceStopper()
 
 	readers := symo.MetricReaders{
 		LoadAvg: loadavg.Read,
@@ -59,27 +57,31 @@ func main() {
 	toHeartChan := make(symo.ClientsToHeartChan, 1)
 	toClientsChan := make(symo.HeartToClientsChan, 1)
 
-	clientsService := clients.NewClients(mainCtx, logg, toHeartChan, toClientsChan)
-	clientsService.Start(wg)
+	clientsService := clients.NewClients(logg)
+	clientsService.Start(mainCtx, toHeartChan, toClientsChan)
+	stopper.add(clientsService.Stop)
 
-	heartService := heart.NewHeart(mainCtx, logg, config.Metric, readers, toHeartChan, toClientsChan)
-	heartService.Start(wg)
+	heartService := heart.NewHeart(logg)
+	heartService.Start(mainCtx, config.Metric, readers, toHeartChan, toClientsChan)
+	stopper.add(heartService.Stop)
 
-	grpcServer := grpc.NewServer(mainCtx, logg, clientsService)
+	grpcServer := grpc.NewServer(logg)
 	go func() {
-		err := grpcServer.Start(":" + config.Server.Port)
+		err := grpcServer.Start(":"+config.Server.Port, clientsService)
 		if err != nil {
 			logg.Error(err)
 			cancel()
+			return
 		}
 	}()
+	stopper.add(grpcServer.Stop)
 
 	logg.Info("system monitor is running...")
 
 	<-mainCtx.Done()
 
 	logg.Info("stopping system monitor...")
-	shutDown(logg, wg, grpcServer)
+	stopper.stop()
 	logg.Info("system monitor is stopped")
 }
 
@@ -89,19 +91,4 @@ func watchSignals(cancel context.CancelFunc) {
 
 	<-signals
 	cancel()
-}
-
-func shutDown(logg symo.Logger, wg *sync.WaitGroup, grpcServer symo.GRPCServer) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := grpcServer.Stop(ctx); err != nil {
-			logg.Error(err)
-		}
-	}()
-
-	wg.Wait()
 }

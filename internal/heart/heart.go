@@ -11,8 +11,10 @@ import (
 const timeToGetMetric = 950 * time.Millisecond
 
 type heart struct {
-	ctx           context.Context // контекст приложения, сервис завершается по закрытию контекста
-	pointsMutex   *sync.Mutex
+	ctx           context.Context // управление остановкой сервиса
+	ctxCancel     context.CancelFunc
+	closedCh      chan interface{}
+	mutex         *sync.Mutex
 	points        symo.Points        // собираемые данные
 	workerChans   []chan<- symo.Beat // каналы горутин, ответственных за сбор конкретных метрик
 	isClients     bool               // сервис работает, только если есть клиенты
@@ -23,58 +25,56 @@ type heart struct {
 	log           symo.Logger
 }
 
-func NewHeart(ctx context.Context, log symo.Logger, config symo.MetricConf, readers symo.MetricReaders,
-	toHeartChan <-chan symo.HeartCommand, toClientsChan chan<- symo.ClientsBeat) symo.Heart {
+func NewHeart(log symo.Logger) symo.Heart {
 	return &heart{
-		ctx:           ctx,
-		pointsMutex:   &sync.Mutex{},
-		points:        make(symo.Points),
-		isClients:     false,
-		config:        config,
-		readers:       readers,
-		toHeartChan:   toHeartChan,
-		toClientsChan: toClientsChan,
-		log:           log,
+		log: log,
 	}
 }
 
-func (h *heart) Start(wg *sync.WaitGroup) {
-	wg.Add(1)
+func (h *heart) Start(ctx context.Context, config symo.MetricConf, readers symo.MetricReaders,
+	toHeartChan <-chan symo.HeartCommand, toClientsChan chan<- symo.ClientsBeat) {
+	h.config = config
+	h.readers = readers
+	h.toHeartChan = toHeartChan
+	h.toClientsChan = toClientsChan
+
+	h.ctx, h.ctxCancel = context.WithCancel(ctx)
+	h.closedCh = make(chan interface{})
+	h.mutex = &sync.Mutex{}
+	h.points = make(symo.Points)
+	h.workerChans = nil
+	h.isClients = false
+
 	h.mountMetrics()
 
-	go func() {
-		defer func() {
-			close(h.toClientsChan)
-			h.unmountMetrics()
-			h.log.Debug("heart is stopped")
-			wg.Done()
-		}()
+	go h.work()
+}
 
-		for {
-			if h.ctx.Err() != nil {
-				return
-			}
-			if h.isClients {
-				h.work()
-			} else {
-				h.waitClients()
-			}
-		}
-	}()
+func (h *heart) Stop(ctx context.Context) {
+	h.ctxCancel()
+
+	select {
+	case <-ctx.Done():
+	case <-h.closedCh:
+	}
+
+	close(h.toClientsChan)
+	h.unmountMetrics()
+	h.log.Debug("heart is stopped")
 }
 
 func (h *heart) mountMetrics() {
 	if h.config.Loadavg {
-		go loadavg(h, h.newWorkerChan(), h.readers.LoadAvg)
+		go loadavg(h.ctx, h.newWorkerChan(), h.readers.LoadAvg, h.log)
 	}
 	if h.config.CPU {
-		go cpu(h, h.newWorkerChan(), h.readers.CPU)
+		go cpu(h.ctx, h.newWorkerChan(), h.readers.CPU, h.log)
 	}
 }
 
 func (h *heart) initMetrics() {
 	if h.config.CPU {
-		initCPU(h)
+		initCPU(h.ctx, h.readers.CPU, h.log)
 	}
 }
 
@@ -88,6 +88,23 @@ func (h *heart) newWorkerChan() chan symo.Beat {
 func (h *heart) unmountMetrics() {
 	for _, ch := range h.workerChans {
 		close(ch)
+	}
+}
+
+func (h *heart) work() {
+	for {
+		select {
+		case <-h.ctx.Done():
+			close(h.closedCh)
+			return
+		default:
+		}
+
+		if h.isClients {
+			h.process()
+		} else {
+			h.waitClients()
+		}
 	}
 }
 
@@ -105,7 +122,7 @@ func (h *heart) waitClients() {
 	}
 }
 
-func (h *heart) work() {
+func (h *heart) process() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -165,8 +182,8 @@ func (h *heart) processTick(now time.Time) {
 }
 
 func (h *heart) addPoint(now time.Time) *symo.Point {
-	h.pointsMutex.Lock()
-	defer h.pointsMutex.Unlock()
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
 
 	point := &symo.Point{}
 	h.points[now] = point
@@ -175,8 +192,8 @@ func (h *heart) addPoint(now time.Time) *symo.Point {
 }
 
 func (h *heart) cleanPoints(now time.Time) {
-	h.pointsMutex.Lock()
-	defer h.pointsMutex.Unlock()
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
 
 	limit := now.Add(-symo.MaxOldPoints)
 
@@ -188,8 +205,8 @@ func (h *heart) cleanPoints(now time.Time) {
 }
 
 func (h *heart) cloneOldPoints(now time.Time) symo.Points {
-	h.pointsMutex.Lock()
-	defer h.pointsMutex.Unlock()
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
 
 	result := make(symo.Points, len(h.points))
 	for key, point := range h.points {
