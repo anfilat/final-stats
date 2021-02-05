@@ -11,4 +11,9 @@ del temp.txt
 set "LDFLAGS=-X main.buildDate=%BUILD_DATE%-%BUILD_TIME% -X main.gitHash=%GIT_HASH%"
 echo %LDFLAGS%
 
-go build -v -o %BIN% -ldflags "%LDFLAGS%" .\cmd\symo
+go build -v -o %BIN% -ldflags "%LDFLAGS%" -tags pprof .\cmd\symo
+
+set LOAD_BIN=.\bin\load.exe
+go build -v -o %LOAD_BIN% .\cmd\load
+
+call %LOAD_BIN%
