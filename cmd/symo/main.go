@@ -10,8 +10,8 @@ import (
 
 	"github.com/anfilat/final-stats/internal/clients"
 	"github.com/anfilat/final-stats/internal/cpu"
+	"github.com/anfilat/final-stats/internal/engine"
 	"github.com/anfilat/final-stats/internal/grpc"
-	"github.com/anfilat/final-stats/internal/heart"
 	"github.com/anfilat/final-stats/internal/loadavg"
 	"github.com/anfilat/final-stats/internal/logger"
 	"github.com/anfilat/final-stats/internal/symo"
@@ -54,16 +54,16 @@ func main() {
 		CPU:     cpu.Read,
 	}
 
-	toHeartChan := make(symo.ClientsToHeartChan, 1)
-	toClientsChan := make(symo.HeartToClientsChan, 1)
+	toEngineChan := make(symo.ClientsToEngineChan, 1)
+	toClientsChan := make(symo.EngineToClientsChan, 1)
 
 	clientsService := clients.NewClients(logg)
-	clientsService.Start(mainCtx, toHeartChan, toClientsChan)
+	clientsService.Start(mainCtx, toEngineChan, toClientsChan)
 	stopper.add(clientsService.Stop)
 
-	heartService := heart.NewHeart(logg)
-	heartService.Start(mainCtx, config.Metric, readers, toHeartChan, toClientsChan)
-	stopper.add(heartService.Stop)
+	engineService := engine.NewEngine(logg)
+	engineService.Start(mainCtx, config.Metric, readers, toEngineChan, toClientsChan)
+	stopper.add(engineService.Stop)
 
 	grpcServer := grpc.NewServer(logg)
 	go func() {

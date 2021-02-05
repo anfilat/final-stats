@@ -13,47 +13,40 @@ const MaxSeconds = 10 * 60
 const MaxOldPoints = MaxSeconds * time.Second
 
 // сервис, запускающий каждую секунду сбор статистики и ее отправку клиентам.
-type Heart interface {
-	Start(ctx context.Context, config MetricConf, readers MetricReaders,
-		toHeartChan <-chan HeartCommand, toClientsChan chan<- ClientsBeat)
-	Stop(ctx context.Context)
+type Engine interface {
+	Start(context.Context, MetricConf, MetricReaders, <-chan EngineCommand, chan<- MetricsData)
+	Stop(context.Context)
 }
 
 // сервис, хранящий всех подключенных клиентов и отсылающий им статистику.
 type Clients interface {
-	Start(ctx context.Context, toHeartChan chan<- HeartCommand, toClientsChan <-chan ClientsBeat)
-	Stop(ctx context.Context)
+	Start(context.Context, chan<- EngineCommand, <-chan MetricsData)
+	Stop(context.Context)
 	// канал для получения отсылаемых данных и ф-ия отключения клиента
-	NewClient(client NewClient) (<-chan *pb.Stats, func(), error)
+	NewClient(NewClient) (<-chan *pb.Stats, func(), error)
 }
 
-// ошибка, возвращаемая grpc запросу, если приложение останавливается
+// ErrStopped ошибка, возвращаемая grpc запросу, если приложение останавливается.
 var ErrStopped = errors.New("service is stopped")
 
-// канал для управления сервисом Heart из сервиса Clients. Если клиентов нет, статистику собирать не нужно.
-type ClientsToHeartChan chan HeartCommand
+// канал для управления сервисом Engine из сервиса Clients. Если клиентов нет, статистику собирать не нужно.
+type ClientsToEngineChan chan EngineCommand
 
-type HeartCommand int
+type EngineCommand int
 
 const (
-	Start HeartCommand = iota
+	Start EngineCommand = iota
 	Stop
 )
 
 // канал для посекундной передачи накопленных данных сервису клиентов.
-type HeartToClientsChan chan ClientsBeat
+type EngineToClientsChan chan MetricsData
 
 // сервису клиентов отсылается текущая секунда и копия всех собранных данных.
-// Отсылается копия, чтобы сервис мог ее обрабатывать, не блокируя мьютекст с собираемыми данными.
-type ClientsBeat struct {
+// Отсылается копия, чтобы сервис мог ее обрабатывать, не блокируя мьютекс с собираемыми данными.
+type MetricsData struct {
 	Time   time.Time
 	Points Points
-}
-
-// информация, отправляемая горутинам, ответственным за сбор какой-то метрики.
-type Beat struct {
-	Time  time.Time // за какую секунду метрика
-	Point *Point    // структура, в которую складываются метрики
 }
 
 // хранилище собранных посекундных наборов метрик.
@@ -65,7 +58,7 @@ type Point struct {
 	CPU     *CPUData
 }
 
-// набор функций, возвращающих свои метрики. Передается сервису Heart при его создании.
+// набор функций, возвращающих свои метрики. Передается сервису Engine при его создании.
 type MetricReaders struct {
 	LoadAvg LoadAvg
 	CPU     CPU

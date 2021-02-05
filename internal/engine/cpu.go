@@ -1,4 +1,4 @@
-package heart
+package engine
 
 import (
 	"context"
@@ -21,12 +21,12 @@ func initCPU(ctx context.Context, reader symo.CPU, log symo.Logger) {
 	}
 }
 
-func cpu(ctx context.Context, ch <-chan symo.Beat, reader symo.CPU, log symo.Logger) {
+func cpu(ctx context.Context, ch <-chan timePoint, reader symo.CPU, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case beat, ok := <-ch:
+		case tp, ok := <-ch:
 			if !ok {
 				return
 			}
@@ -43,7 +43,7 @@ func cpu(ctx context.Context, ch <-chan symo.Beat, reader symo.CPU, log symo.Log
 					return
 				}
 
-				beat.Point.CPU = data
+				tp.point.CPU = data
 			}()
 		}
 	}

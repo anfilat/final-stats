@@ -9,7 +9,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func makeSnapshot(data *symo.ClientsBeat, m int) *pb.Stats {
+func makeSnapshot(data *symo.MetricsData, m int) *pb.Stats {
 	from := data.Time.Add(time.Duration(-m) * time.Second)
 	count := 0
 

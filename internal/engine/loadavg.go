@@ -1,4 +1,4 @@
-package heart
+package engine
 
 import (
 	"context"
@@ -8,12 +8,12 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func loadavg(ctx context.Context, ch <-chan symo.Beat, reader symo.LoadAvg, log symo.Logger) {
+func loadavg(ctx context.Context, ch <-chan timePoint, reader symo.LoadAvg, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case beat, ok := <-ch:
+		case tp, ok := <-ch:
 			if !ok {
 				return
 			}
@@ -30,7 +30,7 @@ func loadavg(ctx context.Context, ch <-chan symo.Beat, reader symo.LoadAvg, log 
 					return
 				}
 
-				beat.Point.LoadAvg = data
+				tp.point.LoadAvg = data
 			}()
 		}
 	}
