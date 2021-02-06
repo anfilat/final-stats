@@ -1,11 +1,11 @@
 // +build windows
 
+// based on https://github.com/shirou/gopsutil
 package loadavg
 
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"sync"
 	"time"
@@ -13,6 +13,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
+	"github.com/anfilat/final-stats/internal/common"
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
@@ -33,15 +34,11 @@ func Read(_ context.Context) (*symo.LoadAvgData, error) {
 	loadAvgMutex.Lock()
 	defer loadAvgMutex.Unlock()
 
-	if loadErr != nil {
-		return nil, loadErr
-	}
-
 	return &symo.LoadAvgData{
 		Load1:  loadAvg1M,
 		Load5:  loadAvg5M,
 		Load15: loadAvg15M,
-	}, nil
+	}, loadErr
 }
 
 func loadAvgGoroutine() {
@@ -54,9 +51,7 @@ func loadAvgGoroutine() {
 
 	counter, err := processorQueueLengthCounter()
 	if err != nil || counter == nil {
-		log.Println(err)
-		log.Println(counter)
-		log.Println("unexpected processor queue length counter error")
+		loadErr = fmt.Errorf("unexpected processor queue length counter error: %w counter: %v", err, counter)
 		return
 	}
 
@@ -74,24 +69,6 @@ func loadAvgGoroutine() {
 	}
 }
 
-// copied from https://github.com/shirou/gopsutil
-
-//nolint:golint,stylecheck
-const (
-	PDH_FMT_DOUBLE   = 0x00000200
-	PDH_INVALID_DATA = 0xc0000bc6
-	PDH_NO_DATA      = 0x800007d5
-)
-
-var (
-	pdhDll = windows.NewLazySystemDLL("pdh.dll")
-
-	pdhOpenQuery                = pdhDll.NewProc("PdhOpenQuery")
-	pdhAddCounter               = pdhDll.NewProc("PdhAddEnglishCounterW")
-	pdhCollectQueryData         = pdhDll.NewProc("PdhCollectQueryData")
-	pdhGetFormattedCounterValue = pdhDll.NewProc("PdhGetFormattedCounterValue")
-)
-
 type win32PerformanceCounter struct {
 	postName    string
 	counterName string
@@ -100,9 +77,9 @@ type win32PerformanceCounter struct {
 }
 
 func (w *win32PerformanceCounter) GetValue() (float64, error) {
-	r, _, err := pdhCollectQueryData.Call(uintptr(w.query))
+	r, _, err := common.PdhCollectQueryData.Call(uintptr(w.query))
 	if r != 0 && err != nil {
-		if r == PDH_NO_DATA {
+		if r == common.PDH_NO_DATA {
 			return 0, fmt.Errorf("this counter has not data: %w", err)
 		}
 		return 0, err
@@ -124,7 +101,7 @@ func processorQueueLengthCounter() (*win32PerformanceCounter, error) {
 		postName:    postName,
 		counterName: counterName,
 	}
-	r, _, err := pdhAddCounter.Call(
+	r, _, err := common.PdhAddCounter.Call(
 		uintptr(counter.query),
 		uintptr(unsafe.Pointer(windows.StringToUTF16Ptr(counter.counterName))),
 		0,
@@ -136,24 +113,22 @@ func processorQueueLengthCounter() (*win32PerformanceCounter, error) {
 	return &counter, nil
 }
 
-//nolint:golint,stylecheck
-type PDH_FMT_COUNTERVALUE_DOUBLE struct {
-	CStatus     uint32
-	DoubleValue float64
-}
-
 func getCounterValue(counter windows.Handle) (float64, error) {
-	var value PDH_FMT_COUNTERVALUE_DOUBLE
-	r, _, err := pdhGetFormattedCounterValue.Call(uintptr(counter), PDH_FMT_DOUBLE, uintptr(0), uintptr(unsafe.Pointer(&value)))
-	if r != 0 && r != PDH_INVALID_DATA {
-		return 0, err
+	var value common.PDH_FMT_COUNTERVALUE_DOUBLE
+	r, _, err := common.PdhGetFormattedCounterValue.Call(
+		uintptr(counter),
+		common.PDH_FMT_DOUBLE,
+		uintptr(0),
+		uintptr(unsafe.Pointer(&value)))
+	if r != 0 && r != common.PDH_INVALID_DATA {
+		return 0, fmt.Errorf("call PdhGetFormattedCounterValue error: %w", err)
 	}
 	return value.DoubleValue, nil
 }
 
 func createQuery() (windows.Handle, error) {
 	var query windows.Handle
-	r, _, err := pdhOpenQuery.Call(0, 0, uintptr(unsafe.Pointer(&query)))
+	r, _, err := common.PdhOpenQuery.Call(0, 0, uintptr(unsafe.Pointer(&query)))
 	if r != 0 {
 		return 0, fmt.Errorf("create query: %w", err)
 	}
