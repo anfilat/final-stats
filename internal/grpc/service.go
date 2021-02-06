@@ -14,12 +14,14 @@ type Service struct {
 	pb.UnimplementedSymoServer
 
 	clients symo.Clients
+	config  symo.Config
 	log     symo.Logger
 }
 
-func newService(log symo.Logger, clients symo.Clients) *Service {
+func newService(log symo.Logger, config symo.Config, clients symo.Clients) *Service {
 	return &Service{
 		clients: clients,
+		config:  config,
 		log:     log,
 	}
 }
@@ -30,11 +32,12 @@ func (s *Service) GetStats(req *pb.StatsRequest, srv pb.Symo_GetStatsServer) err
 	n := int(req.N)
 	m := int(req.M)
 
-	if n > symo.MaxSeconds {
-		return status.Error(codes.InvalidArgument, fmt.Sprintf("N must be less than %v seconds", symo.MaxSeconds))
+	MaxSeconds := s.config.App.MaxSeconds
+	if n > MaxSeconds {
+		return status.Error(codes.InvalidArgument, fmt.Sprintf("N must be less than %v seconds", MaxSeconds))
 	}
-	if m > symo.MaxSeconds {
-		return status.Error(codes.InvalidArgument, fmt.Sprintf("M must be less than %v seconds", symo.MaxSeconds))
+	if m > MaxSeconds {
+		return status.Error(codes.InvalidArgument, fmt.Sprintf("M must be less than %v seconds", MaxSeconds))
 	}
 
 	ch, del, err := s.clients.NewClient(symo.NewClient{N: n, M: m})

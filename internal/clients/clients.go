@@ -15,8 +15,8 @@ type clients struct {
 	closedCh      chan interface{}
 	mutex         *sync.Mutex
 	clients       clientsList // список клиентов
-	toEngineChan  chan<- symo.EngineCommand
-	toClientsChan <-chan symo.MetricsData
+	toCollectorCh chan<- symo.CollectorCommand
+	toClientsCh   <-chan symo.MetricsData
 	log           symo.Logger
 }
 
@@ -26,9 +26,9 @@ func NewClients(log symo.Logger) symo.Clients {
 	}
 }
 
-func (c *clients) Start(ctx context.Context, toEngineChan chan<- symo.EngineCommand, toClientsChan <-chan symo.MetricsData) {
-	c.toEngineChan = toEngineChan
-	c.toClientsChan = toClientsChan
+func (c *clients) Start(ctx context.Context, toCollectorCh chan<- symo.CollectorCommand, toClientsCh <-chan symo.MetricsData) {
+	c.toCollectorCh = toCollectorCh
+	c.toClientsCh = toClientsCh
 
 	c.ctx, c.ctxCancel = context.WithCancel(ctx)
 	c.closedCh = make(chan interface{})
@@ -53,7 +53,7 @@ func (c *clients) Stop(ctx context.Context) {
 		client.close()
 	}
 
-	close(c.toEngineChan)
+	close(c.toCollectorCh)
 	c.log.Debug("clients is stopped")
 }
 
@@ -65,7 +65,7 @@ func (c *clients) work() {
 			close(c.closedCh)
 			c.mutex.Unlock()
 			return
-		case data, ok := <-c.toClientsChan:
+		case data, ok := <-c.toClientsCh:
 			if !ok {
 				return
 			}
@@ -91,7 +91,7 @@ func (c *clients) NewClient(cl symo.NewClient) (<-chan *pb.Stats, func(), error)
 
 	if len(c.clients) == 1 {
 		select {
-		case c.toEngineChan <- symo.Start:
+		case c.toCollectorCh <- symo.Start:
 		default:
 		}
 	}
@@ -142,9 +142,9 @@ func (c *clients) sendStat(data *symo.MetricsData) {
 
 	if len(c.clients) == 0 {
 		select {
-		case c.toEngineChan <- symo.Stop:
+		case c.toCollectorCh <- symo.Stop:
 		default:
 		}
 	}
-	c.log.Info(time.Since(from))
+	c.log.Debug("stats sent in ", time.Since(from))
 }

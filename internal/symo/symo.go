@@ -8,19 +8,15 @@ import (
 	"github.com/anfilat/final-stats/internal/pb"
 )
 
-// данные хранятся не более 10 минут.
-const MaxSeconds = 10 * 60
-const MaxOldPoints = MaxSeconds * time.Second
-
 // сервис, запускающий каждую секунду сбор статистики и ее отправку клиентам.
-type Engine interface {
-	Start(context.Context, MetricConf, MetricReaders, <-chan EngineCommand, chan<- MetricsData)
+type Collector interface {
+	Start(context.Context, MetricReaders, <-chan CollectorCommand, chan<- MetricsData)
 	Stop(context.Context)
 }
 
 // сервис, хранящий всех подключенных клиентов и отсылающий им статистику.
 type Clients interface {
-	Start(context.Context, chan<- EngineCommand, <-chan MetricsData)
+	Start(context.Context, chan<- CollectorCommand, <-chan MetricsData)
 	Stop(context.Context)
 	// канал для получения отсылаемых данных и ф-ия отключения клиента
 	NewClient(NewClient) (<-chan *pb.Stats, func(), error)
@@ -29,18 +25,18 @@ type Clients interface {
 // ErrStopped ошибка, возвращаемая grpc запросу, если приложение останавливается.
 var ErrStopped = errors.New("service is stopped")
 
-// канал для управления сервисом Engine из сервиса Clients. Если клиентов нет, статистику собирать не нужно.
-type ClientsToEngineChan chan EngineCommand
+// канал для управления сервисом Collector из сервиса Clients. Если клиентов нет, статистику собирать не нужно.
+type ClientsToCollectorCh chan CollectorCommand
 
-type EngineCommand int
+type CollectorCommand int
 
 const (
-	Start EngineCommand = iota
+	Start CollectorCommand = iota
 	Stop
 )
 
 // канал для посекундной передачи накопленных данных сервису клиентов.
-type EngineToClientsChan chan MetricsData
+type CollectorToClientsCh chan MetricsData
 
 // сервису клиентов отсылается текущая секунда и копия всех собранных данных.
 // Отсылается копия, чтобы сервис мог ее обрабатывать, не блокируя мьютекс с собираемыми данными.
@@ -58,7 +54,7 @@ type Point struct {
 	CPU     *CPUData
 }
 
-// набор функций, возвращающих свои метрики. Передается сервису Engine при его создании.
+// набор функций, возвращающих свои метрики. Передается сервису Collector при его создании.
 type MetricReaders struct {
 	LoadAvg LoadAvg
 	CPU     CPU

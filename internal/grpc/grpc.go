@@ -11,13 +11,15 @@ import (
 )
 
 type grpcServer struct {
-	srv *grpc.Server
-	log symo.Logger
+	srv    *grpc.Server
+	config symo.Config
+	log    symo.Logger
 }
 
-func NewServer(log symo.Logger) symo.GRPCServer {
+func NewServer(log symo.Logger, config symo.Config) symo.GRPCServer {
 	return &grpcServer{
-		log: log,
+		config: config,
+		log:    log,
 	}
 }
 
@@ -28,7 +30,7 @@ func (g *grpcServer) Start(addr string, clients symo.Clients) error {
 	}
 
 	g.srv = grpc.NewServer()
-	pb.RegisterSymoServer(g.srv, newService(g.log, clients))
+	pb.RegisterSymoServer(g.srv, newService(g.log, g.config, clients))
 
 	g.log.Debug("starting grpc server on ", addr)
 	return g.srv.Serve(lsn)

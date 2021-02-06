@@ -38,6 +38,7 @@ func configure(v *viper.Viper) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 
+	v.SetDefault("app.maxSeconds", 600)
 	v.SetDefault("log.level", "INFO")
 	v.SetDefault("server.port", "8000")
 	v.SetDefault("metric.loadavg", true)
@@ -45,14 +46,31 @@ func configure(v *viper.Viper) {
 }
 
 type Config struct {
+	App    AppConf
 	Log    LoggerConf
 	Server ServerConf
 	Metric MetricConf
 }
 
 func (c Config) Validate() error {
+	if err := c.App.Validate(); err != nil {
+		return err
+	}
 	if err := c.Server.Validate(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+type AppConf struct {
+	MaxSeconds int
+	RunAlways  bool
+}
+
+func (c AppConf) Validate() error {
+	if c.MaxSeconds <= 0 {
+		return errors.New("time to keep metrics must be greater than zero")
 	}
 
 	return nil

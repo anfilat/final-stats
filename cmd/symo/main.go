@@ -9,8 +9,8 @@ import (
 	"syscall"
 
 	"github.com/anfilat/final-stats/internal/clients"
+	"github.com/anfilat/final-stats/internal/collector"
 	"github.com/anfilat/final-stats/internal/cpu"
-	"github.com/anfilat/final-stats/internal/engine"
 	"github.com/anfilat/final-stats/internal/grpc"
 	"github.com/anfilat/final-stats/internal/loadavg"
 	"github.com/anfilat/final-stats/internal/logger"
@@ -46,6 +46,8 @@ func main() {
 	}
 
 	logg.Info("starting system monitor")
+	logg.Info("time to keep metrics: ", config.App.MaxSeconds, " seconds")
+	logg.Info("always collect metrics: ", config.App.RunAlways)
 
 	stopper := newServiceStopper()
 
@@ -54,18 +56,18 @@ func main() {
 		CPU:     cpu.Read,
 	}
 
-	toEngineChan := make(symo.ClientsToEngineChan, 1)
-	toClientsChan := make(symo.EngineToClientsChan, 1)
+	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
+	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	clientsService := clients.NewClients(logg)
-	clientsService.Start(mainCtx, toEngineChan, toClientsChan)
+	clientsService.Start(mainCtx, toCollectorCh, toClientsCh)
 	stopper.add(clientsService.Stop)
 
-	engineService := engine.NewEngine(logg)
-	engineService.Start(mainCtx, config.Metric, readers, toEngineChan, toClientsChan)
-	stopper.add(engineService.Stop)
+	collectorService := collector.NewCollector(logg, config)
+	collectorService.Start(mainCtx, readers, toCollectorCh, toClientsCh)
+	stopper.add(collectorService.Stop)
 
-	grpcServer := grpc.NewServer(logg)
+	grpcServer := grpc.NewServer(logg, config)
 	go func() {
 		err := grpcServer.Start(":"+config.Server.Port, clientsService)
 		if err != nil {
