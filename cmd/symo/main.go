@@ -48,7 +48,6 @@ func main() {
 
 	logg.Info("starting system monitor")
 	logg.Info("time to keep metrics: ", config.App.MaxSeconds, " seconds")
-	logg.Info("always collect metrics: ", config.App.RunAlways)
 
 	stopper := newServiceStopper()
 

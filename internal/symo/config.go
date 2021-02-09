@@ -66,7 +66,6 @@ func (c Config) Validate() error {
 
 type AppConf struct {
 	MaxSeconds int
-	RunAlways  bool
 }
 
 func (c AppConf) Validate() error {

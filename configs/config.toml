@@ -1,6 +1,5 @@
 [app]
 maxSeconds = 600
-runAlways = false
 
 [log]
 level = "INFO"

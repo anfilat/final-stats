@@ -65,6 +65,7 @@ func (c *collector) Stop(ctx context.Context) {
 	}
 
 	close(c.toClientsCh)
+	c.stopMetrics()
 	c.unmountMetrics()
 	c.log.Debug("collector is stopped")
 }
@@ -74,26 +75,19 @@ func (c *collector) mountMetrics() {
 		go loadavg(c.ctx, c.newWorkerChan(), c.readers.LoadAvg, c.log)
 	}
 	if c.config.Metric.CPU {
+		go startCPU(c.ctx, c.readers.CPU, c.log)
 		go cpu(c.ctx, c.newWorkerChan(), c.readers.CPU, c.log)
 	}
 	if c.config.Metric.Loaddisks {
+		go startLoadDisks(c.ctx, c.readers.LoadDisks, c.log)
 		go loadDisks(c.ctx, c.newWorkerChan(), c.readers.LoadDisks, c.log)
-	}
-}
-
-func (c *collector) startMetrics() {
-	if c.config.Metric.CPU {
-		startCPU(c.ctx, c.readers.CPU, c.log)
-	}
-	if c.config.Metric.Loaddisks {
-		startLoadDisks(c.ctx, c.readers.LoadDisks, c.log)
 	}
 }
 
 func (c *collector) stopMetrics() {
 	ctx := context.Background()
 	if c.config.Metric.Loaddisks {
-		stopLoadDisks(ctx, c.readers.LoadDisks, c.log)
+		go stopLoadDisks(ctx, c.readers.LoadDisks, c.log)
 	}
 }
 
@@ -111,6 +105,9 @@ func (c *collector) unmountMetrics() {
 }
 
 func (c *collector) work() {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -119,51 +116,18 @@ func (c *collector) work() {
 		default:
 		}
 
-		if c.isClients || c.config.App.RunAlways {
-			c.process()
-		} else {
-			c.waitClients()
-		}
-	}
-}
-
-func (c *collector) waitClients() {
-	select {
-	case <-c.ctx.Done():
-	case mess, ok := <-c.toCollectorCh:
-		if !ok {
-			return
-		}
-		if mess == symo.Start {
-			c.isClients = true
-			c.log.Debug("start collector work")
-		}
-	}
-}
-
-func (c *collector) process() {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	c.startMetrics()
-	defer c.stopMetrics()
-
-	for {
 		select {
 		case <-c.ctx.Done():
+			close(c.closedCh)
 			return
 		case mess, ok := <-c.toCollectorCh:
 			if !ok {
 				return
 			}
-			if mess == symo.Stop {
+			if mess == symo.Start {
+				c.isClients = true
+			} else if mess == symo.Stop {
 				c.isClients = false
-
-				if c.config.App.RunAlways {
-					break
-				}
-				c.log.Debug("pause collector work")
-				return
 			}
 		case now := <-ticker.C:
 			c.processTick(now.Truncate(time.Second))
