@@ -15,13 +15,13 @@ type cpuData struct {
 
 var prevData cpuData
 
-func Read(_ context.Context, init bool) (*symo.CPUData, error) {
+func Read(_ context.Context, action symo.MetricCommand) (*symo.CPUData, error) {
 	data, err := getCPU()
 	if err != nil {
 		return nil, err
 	}
 
-	if init {
+	if action == symo.StartMetric {
 		prevData = *data
 		return nil, nil
 	}

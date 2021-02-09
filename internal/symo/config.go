@@ -43,6 +43,7 @@ func configure(v *viper.Viper) {
 	v.SetDefault("server.port", "8000")
 	v.SetDefault("metric.loadavg", true)
 	v.SetDefault("metric.cpu", true)
+	v.SetDefault("metric.loaddisks", true)
 }
 
 type Config struct {
@@ -93,6 +94,7 @@ func (c ServerConf) Validate() error {
 }
 
 type MetricConf struct {
-	Loadavg bool
-	CPU     bool
+	Loadavg   bool
+	CPU       bool
+	Loaddisks bool
 }

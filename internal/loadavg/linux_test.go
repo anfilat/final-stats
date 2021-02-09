@@ -13,5 +13,5 @@ func TestLoadAvgLinuxEqualityMethods(t *testing.T) {
 	require.NoError(t, err)
 	avg2, err := sysInfoAvg()
 	require.NoError(t, err)
-	require.Equal(t, &avg1, &avg2)
+	require.Equal(t, avg1, avg2)
 }

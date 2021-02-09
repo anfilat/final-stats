@@ -42,11 +42,9 @@ func (s *Service) GetStats(req *StatsRequest, srv Symo_GetStatsServer) error {
 
 	ch, del, err := s.clients.NewClient(symo.ClientData{N: n, M: m})
 	if err != nil {
-		return status.Error(codes.InvalidArgument, "service is closing")
+		return status.Error(codes.Unavailable, "service is closing")
 	}
 	defer del()
-
-	message := newMessage()
 
 L:
 	for {
@@ -59,8 +57,7 @@ L:
 				break L
 			}
 
-			dataToGRPC(data, message)
-			if err := srv.Send(message); err != nil {
+			if err := srv.Send(dataToGRPC(data)); err != nil {
 				s.log.Debug(fmt.Errorf("unable to send message: %w", err))
 				break L
 			}
@@ -70,29 +67,33 @@ L:
 	return nil
 }
 
-func newMessage() *Stats {
-	return &Stats{
-		LoadAvg: &LoadAvg{
-			Load1:  0,
-			Load5:  0,
-			Load15: 0,
-		},
-		Cpu: &CPU{
-			User:   0,
-			System: 0,
-			Idle:   0,
-		},
+func dataToGRPC(data *symo.Stats) *Stats {
+	result := &Stats{}
+	result.Time = timestamppb.New(data.Time)
+
+	if data.LoadAvg != nil {
+		result.LoadAvg = &LoadAvg{
+			Load1:  data.LoadAvg.Load1,
+			Load5:  data.LoadAvg.Load5,
+			Load15: data.LoadAvg.Load15,
+		}
 	}
-}
-
-func dataToGRPC(data *symo.Stats, message *Stats) {
-	message.Time = timestamppb.New(data.Time)
-
-	message.LoadAvg.Load1 = data.LoadAvg.Load1
-	message.LoadAvg.Load5 = data.LoadAvg.Load5
-	message.LoadAvg.Load15 = data.LoadAvg.Load15
-
-	message.Cpu.User = data.CPU.User
-	message.Cpu.System = data.CPU.System
-	message.Cpu.Idle = data.CPU.Idle
+	if data.CPU != nil {
+		result.Cpu = &CPU{
+			User:   data.CPU.User,
+			System: data.CPU.System,
+			Idle:   data.CPU.Idle,
+		}
+	}
+	if data.LoadDisks != nil {
+		for _, diskData := range data.LoadDisks {
+			result.LoadDisks = append(result.LoadDisks, &LoadDisk{
+				Name:    diskData.Name,
+				Tps:     diskData.Tps,
+				KBRead:  diskData.KBRead,
+				KBWrite: diskData.KBWrite,
+			})
+		}
+	}
+	return result
 }

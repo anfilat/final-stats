@@ -6,16 +6,18 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/anfilat/final-stats/internal/symo"
 )
 
 func TestCPU(t *testing.T) {
 	ctx := context.Background()
 
-	_, err := Read(ctx, true)
+	_, err := Read(ctx, symo.StartMetric)
 	require.NoError(t, err)
 
 	time.Sleep(time.Second)
-	cpu, err := Read(ctx, false)
+	cpu, err := Read(ctx, symo.GetMetric)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, cpu.User, 0.0)
 	require.LessOrEqual(t, cpu.User, 100.0)

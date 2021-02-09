@@ -45,9 +45,10 @@ type MetricsData struct {
 
 // данные для клиента.
 type Stats struct {
-	Time    time.Time
-	LoadAvg *LoadAvgData
-	CPU     *CPUData
+	Time      time.Time
+	LoadAvg   *LoadAvgData
+	CPU       *CPUData
+	LoadDisks LoadDisksData
 }
 
 // хранилище собранных посекундных наборов метрик.
@@ -55,14 +56,24 @@ type Points map[time.Time]*Point
 
 // набор метрик (снапшот). За секунду или усредненный.
 type Point struct {
-	LoadAvg *LoadAvgData
-	CPU     *CPUData
+	LoadAvg   *LoadAvgData
+	CPU       *CPUData
+	LoadDisks LoadDisksData
 }
+
+type MetricCommand int
+
+const (
+	StartMetric MetricCommand = iota
+	StopMetric
+	GetMetric
+)
 
 // набор функций, возвращающих свои метрики. Передается сервису Collector при его создании.
 type MetricReaders struct {
-	LoadAvg LoadAvg
-	CPU     CPU
+	LoadAvg   LoadAvg
+	CPU       CPU
+	LoadDisks LoadDisks
 }
 
 // функция возвращающая среднюю загрузку системы.
@@ -76,13 +87,25 @@ type LoadAvgData struct {
 }
 
 // функция возвращающая среднюю загрузку cpu.
-type CPU func(ctx context.Context, init bool) (*CPUData, error)
+type CPU func(ctx context.Context, action MetricCommand) (*CPUData, error)
 
 // средняя загрузка cpu. В процентах.
 type CPUData struct {
 	User   float64
 	System float64
 	Idle   float64
+}
+
+// функция возвращающая загрузку дисков.
+type LoadDisks func(ctx context.Context, action MetricCommand) (LoadDisksData, error)
+
+type LoadDisksData []DiskData
+
+type DiskData struct {
+	Name    string
+	Tps     float64
+	KBRead  float64
+	KBWrite float64
 }
 
 type GRPCServer interface {

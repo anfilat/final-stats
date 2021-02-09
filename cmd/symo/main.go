@@ -13,6 +13,7 @@ import (
 	"github.com/anfilat/final-stats/internal/cpu"
 	"github.com/anfilat/final-stats/internal/grpc"
 	"github.com/anfilat/final-stats/internal/loadavg"
+	"github.com/anfilat/final-stats/internal/loaddisks"
 	"github.com/anfilat/final-stats/internal/logger"
 	"github.com/anfilat/final-stats/internal/symo"
 )
@@ -52,8 +53,9 @@ func main() {
 	stopper := newServiceStopper()
 
 	readers := symo.MetricReaders{
-		LoadAvg: loadavg.Read,
-		CPU:     cpu.Read,
+		LoadAvg:   loadavg.Read,
+		CPU:       cpu.Read,
+		LoadDisks: loaddisks.Read,
 	}
 
 	toCollectorCh := make(symo.ClientsToCollectorCh, 1)

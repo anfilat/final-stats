@@ -38,13 +38,13 @@ func NewCollector(log symo.Logger, config symo.Config) symo.Collector {
 	}
 }
 
-func (c *collector) Start(ctx context.Context, readers symo.MetricReaders,
+func (c *collector) Start(_ context.Context, readers symo.MetricReaders,
 	toCollectorCh <-chan symo.CollectorCommand, toClientsCh chan<- symo.MetricsData) {
 	c.readers = readers
 	c.toCollectorCh = toCollectorCh
 	c.toClientsCh = toClientsCh
 
-	c.ctx, c.ctxCancel = context.WithCancel(ctx)
+	c.ctx, c.ctxCancel = context.WithCancel(context.Background())
 	c.closedCh = make(chan interface{})
 	c.mutex = &sync.Mutex{}
 	c.points = make(symo.Points)
@@ -76,11 +76,24 @@ func (c *collector) mountMetrics() {
 	if c.config.Metric.CPU {
 		go cpu(c.ctx, c.newWorkerChan(), c.readers.CPU, c.log)
 	}
+	if c.config.Metric.Loaddisks {
+		go loadDisks(c.ctx, c.newWorkerChan(), c.readers.LoadDisks, c.log)
+	}
 }
 
-func (c *collector) initMetrics() {
+func (c *collector) startMetrics() {
 	if c.config.Metric.CPU {
-		initCPU(c.ctx, c.readers.CPU, c.log)
+		startCPU(c.ctx, c.readers.CPU, c.log)
+	}
+	if c.config.Metric.Loaddisks {
+		startLoadDisks(c.ctx, c.readers.LoadDisks, c.log)
+	}
+}
+
+func (c *collector) stopMetrics() {
+	ctx := context.Background()
+	if c.config.Metric.Loaddisks {
+		stopLoadDisks(ctx, c.readers.LoadDisks, c.log)
 	}
 }
 
@@ -132,7 +145,8 @@ func (c *collector) process() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	c.initMetrics()
+	c.startMetrics()
+	defer c.stopMetrics()
 
 	for {
 		select {

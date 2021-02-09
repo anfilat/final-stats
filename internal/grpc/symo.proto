@@ -17,10 +17,18 @@ message CPU {
   double Idle = 3;
 }
 
+message LoadDisk {
+  string Name = 1;
+  double Tps = 2;
+  double KBRead = 3;
+  double KBWrite = 4;
+}
+
 message Stats {
   google.protobuf.Timestamp time = 1;
   LoadAvg load_avg = 2;
   CPU cpu = 3;
+  repeated LoadDisk load_disks = 4;
 }
 
 message StatsRequest {
