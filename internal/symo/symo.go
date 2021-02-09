@@ -19,7 +19,7 @@ type Clients interface {
 	Start(context.Context, chan<- CollectorCommand, <-chan MetricsData)
 	Stop(context.Context)
 	// канал для получения отсылаемых данных и ф-ия отключения клиента
-	NewClient(NewClient) (<-chan *pb.Stats, func(), error)
+	NewClient(ClientData) (<-chan *pb.Stats, func(), error)
 }
 
 // ErrStopped ошибка, возвращаемая grpc запросу, если приложение останавливается.
@@ -86,10 +86,9 @@ type GRPCServer interface {
 }
 
 // информация, передаваемая из grpc запроса сервису клиентов.
-type NewClient struct {
-	Ctx context.Context // контекст запроса, закрывается при его окончании. Нужен для определения отключения клиента
-	N   int             // информация отправляется каждые N секунд
-	M   int             // информация усредняется за M секунд
+type ClientData struct {
+	N int // информация отправляется каждые N секунд
+	M int // информация усредняется за M секунд
 }
 
 type Logger interface {

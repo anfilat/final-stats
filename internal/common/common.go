@@ -15,7 +15,7 @@ func ReadProcFile(name string) ([]string, error) {
 		return nil, err
 	}
 
-	return strings.Split(string(content), "\n"), nil
+	return strings.Split(strings.TrimSpace(string(content)), "\n"), nil
 }
 
 func procFileName(name string) string {

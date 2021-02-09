@@ -21,7 +21,7 @@ type grpcClient struct {
 	dead  bool           // контекст клиента закрыт, нужно удалить этого клиента из списка
 }
 
-func newClient(cl symo.NewClient) *grpcClient {
+func newClient(cl symo.ClientData) *grpcClient {
 	ch := make(chan *pb.Stats, MaxQueueLen)
 	client := &grpcClient{
 		n:    cl.N,

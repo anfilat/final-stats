@@ -40,7 +40,7 @@ func (s *Service) GetStats(req *pb.StatsRequest, srv pb.Symo_GetStatsServer) err
 		return status.Error(codes.InvalidArgument, fmt.Sprintf("M must be less than %v seconds", MaxSeconds))
 	}
 
-	ch, del, err := s.clients.NewClient(symo.NewClient{N: n, M: m})
+	ch, del, err := s.clients.NewClient(symo.ClientData{N: n, M: m})
 	if err != nil {
 		return status.Error(codes.InvalidArgument, "service is closing")
 	}

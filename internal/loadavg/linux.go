@@ -4,6 +4,7 @@ package loadavg
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"syscall"
@@ -15,30 +16,30 @@ import (
 func Read(_ context.Context) (*symo.LoadAvgData, error) {
 	stat, err := fileAvg()
 	if err != nil {
-		stat, err = sysInfoAvg()
+		return sysInfoAvg()
 	}
-	return stat, err
+	return stat, nil
 }
 
 func fileAvg() (*symo.LoadAvgData, error) {
 	content, err := common.ReadProcFile("loadavg")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot read the loadavg file: %w", err)
 	}
 
 	values := strings.Fields(content[0])
 
 	load1, err := strconv.ParseFloat(values[0], 64)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot parse load1 field: %w", err)
 	}
 	load5, err := strconv.ParseFloat(values[1], 64)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot parse load5 field: %w", err)
 	}
 	load15, err := strconv.ParseFloat(values[2], 64)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot parse load15 field: %w", err)
 	}
 
 	return &symo.LoadAvgData{
@@ -52,7 +53,7 @@ func sysInfoAvg() (*symo.LoadAvgData, error) {
 	var si syscall.Sysinfo_t
 	err := syscall.Sysinfo(&si)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot call syscall.Sysinfo: %w", err)
 	}
 
 	return &symo.LoadAvgData{

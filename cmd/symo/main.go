@@ -33,7 +33,7 @@ func main() {
 
 	mainCtx, cancel := context.WithCancel(context.Background())
 
-	go watchSignals(cancel)
+	go watchSignals(mainCtx, cancel)
 
 	config, err := symo.NewConfig(configFile)
 	if err != nil {
@@ -87,10 +87,13 @@ func main() {
 	logg.Info("system monitor is stopped")
 }
 
-func watchSignals(cancel context.CancelFunc) {
+func watchSignals(mainCtx context.Context, cancel context.CancelFunc) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
-	<-signals
+	select {
+	case <-mainCtx.Done():
+	case <-signals:
+	}
 	cancel()
 }

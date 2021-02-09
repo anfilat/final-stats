@@ -75,7 +75,7 @@ func (c *clients) work() {
 }
 
 // подключение нового клиента.
-func (c *clients) NewClient(cl symo.NewClient) (<-chan *pb.Stats, func(), error) {
+func (c *clients) NewClient(cl symo.ClientData) (<-chan *pb.Stats, func(), error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 

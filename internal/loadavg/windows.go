@@ -108,7 +108,7 @@ func processorQueueLengthCounter() (*win32PerformanceCounter, error) {
 		uintptr(unsafe.Pointer(&counter.counter)),
 	)
 	if r != 0 {
-		return nil, fmt.Errorf("pdh AddCounter: %w", err)
+		return nil, fmt.Errorf("call PdhAddCounter error: %w", err)
 	}
 	return &counter, nil
 }
