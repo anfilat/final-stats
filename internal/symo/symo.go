@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"time"
-
-	"github.com/anfilat/final-stats/internal/pb"
 )
 
 // сервис, запускающий каждую секунду сбор статистики и ее отправку клиентам.
@@ -19,7 +17,7 @@ type Clients interface {
 	Start(context.Context, chan<- CollectorCommand, <-chan MetricsData)
 	Stop(context.Context)
 	// канал для получения отсылаемых данных и ф-ия отключения клиента
-	NewClient(ClientData) (<-chan *pb.Stats, func(), error)
+	NewClient(ClientData) (<-chan *Stats, func(), error)
 }
 
 // ErrStopped ошибка, возвращаемая grpc запросу, если приложение останавливается.
@@ -43,6 +41,13 @@ type CollectorToClientsCh chan MetricsData
 type MetricsData struct {
 	Time   time.Time
 	Points Points
+}
+
+// данные для клиента.
+type Stats struct {
+	Time    time.Time
+	LoadAvg *LoadAvgData
+	CPU     *CPUData
 }
 
 // хранилище собранных посекундных наборов метрик.

@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anfilat/final-stats/internal/pb"
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
@@ -75,7 +74,7 @@ func (c *clients) work() {
 }
 
 // подключение нового клиента.
-func (c *clients) NewClient(cl symo.ClientData) (<-chan *pb.Stats, func(), error) {
+func (c *clients) NewClient(cl symo.ClientData) (<-chan *symo.Stats, func(), error) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -112,7 +111,7 @@ func (c *clients) sendStat(data *symo.MetricsData) {
 	defer c.mutex.Unlock()
 
 	now := data.Time
-	results := make(map[int]*pb.Stats)
+	results := make(map[int]*symo.Stats)
 
 	clients := make(clientsList, 0, len(c.clients))
 	for _, client := range c.clients {

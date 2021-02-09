@@ -16,7 +16,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/anfilat/final-stats/internal/pb"
+	grpcClient "github.com/anfilat/final-stats/internal/grpc"
 )
 
 var nFrom int
@@ -105,8 +105,8 @@ func runClient(timeoutCtx context.Context, wg *sync.WaitGroup, conn grpc.ClientC
 		ctx, cancel := context.WithCancel(timeoutCtx)
 		defer cancel()
 
-		client := pb.NewSymoClient(conn)
-		req := &pb.StatsRequest{
+		client := grpcClient.NewSymoClient(conn)
+		req := &grpcClient.StatsRequest{
 			N: int32(n),
 			M: int32(m),
 		}

@@ -5,13 +5,13 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/anfilat/final-stats/internal/pb"
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
 type Service struct {
-	pb.UnimplementedSymoServer
+	UnimplementedSymoServer
 
 	clients symo.Clients
 	config  symo.Config
@@ -26,7 +26,7 @@ func newService(log symo.Logger, config symo.Config, clients symo.Clients) *Serv
 	}
 }
 
-func (s *Service) GetStats(req *pb.StatsRequest, srv pb.Symo_GetStatsServer) error {
+func (s *Service) GetStats(req *StatsRequest, srv Symo_GetStatsServer) error {
 	s.log.Debug("new client. Every ", req.N, " for ", req.M)
 
 	n := int(req.N)
@@ -46,6 +46,8 @@ func (s *Service) GetStats(req *pb.StatsRequest, srv pb.Symo_GetStatsServer) err
 	}
 	defer del()
 
+	message := newMessage()
+
 L:
 	for {
 		select {
@@ -57,7 +59,8 @@ L:
 				break L
 			}
 
-			if err := srv.Send(data); err != nil {
+			dataToGRPC(data, message)
+			if err := srv.Send(message); err != nil {
 				s.log.Debug(fmt.Errorf("unable to send message: %w", err))
 				break L
 			}
@@ -65,4 +68,31 @@ L:
 	}
 
 	return nil
+}
+
+func newMessage() *Stats {
+	return &Stats{
+		LoadAvg: &LoadAvg{
+			Load1:  0,
+			Load5:  0,
+			Load15: 0,
+		},
+		Cpu: &CPU{
+			User:   0,
+			System: 0,
+			Idle:   0,
+		},
+	}
+}
+
+func dataToGRPC(data *symo.Stats, message *Stats) {
+	message.Time = timestamppb.New(data.Time)
+
+	message.LoadAvg.Load1 = data.LoadAvg.Load1
+	message.LoadAvg.Load5 = data.LoadAvg.Load5
+	message.LoadAvg.Load15 = data.LoadAvg.Load15
+
+	message.Cpu.User = data.CPU.User
+	message.Cpu.System = data.CPU.System
+	message.Cpu.Idle = data.CPU.Idle
 }

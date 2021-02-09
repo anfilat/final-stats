@@ -3,13 +3,10 @@ package clients
 import (
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/anfilat/final-stats/internal/pb"
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func makeSnapshot(data *symo.MetricsData, m int) *pb.Stats {
+func makeSnapshot(data *symo.MetricsData, m int) *symo.Stats {
 	from := data.Time.Add(time.Duration(-m) * time.Second)
 	count := 0
 
@@ -43,14 +40,14 @@ func makeSnapshot(data *symo.MetricsData, m int) *pb.Stats {
 		cpiIdle /= float64(count)
 	}
 
-	return &pb.Stats{
-		Time: timestamppb.New(data.Time),
-		LoadAvg: &pb.LoadAvg{
+	return &symo.Stats{
+		Time: data.Time,
+		LoadAvg: &symo.LoadAvgData{
 			Load1:  load1,
 			Load5:  load5,
 			Load15: load15,
 		},
-		Cpu: &pb.CPU{
+		CPU: &symo.CPUData{
 			User:   cpuUser,
 			System: cpuSystem,
 			Idle:   cpiIdle,
