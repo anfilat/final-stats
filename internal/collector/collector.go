@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -38,7 +39,7 @@ func NewCollector(log symo.Logger, config symo.Config) symo.Collector {
 	}
 }
 
-func (c *collector) Start(_ context.Context, readers symo.MetricReaders,
+func (c *collector) Start(ctx context.Context, readers symo.MetricReaders,
 	toCollectorCh <-chan symo.CollectorCommand, toClientsCh chan<- symo.MetricsData) {
 	c.readers = readers
 	c.toCollectorCh = toCollectorCh
@@ -51,9 +52,15 @@ func (c *collector) Start(_ context.Context, readers symo.MetricReaders,
 	c.workerChans = nil
 	c.isClients = false
 
-	c.mountMetrics()
+	mountedCh := make(chan interface{})
+	go c.mountMetrics(mountedCh)
 
-	go c.work()
+	select {
+	case <-ctx.Done():
+		return
+	case <-mountedCh:
+		go c.work()
+	}
 }
 
 func (c *collector) Stop(ctx context.Context) {
@@ -61,40 +68,112 @@ func (c *collector) Stop(ctx context.Context) {
 
 	select {
 	case <-ctx.Done():
+		return
 	case <-c.closedCh:
 	}
 
 	close(c.toClientsCh)
-	c.stopMetrics()
-	c.unmountMetrics()
-	c.log.Debug("collector is stopped")
+
+	unmountedCh := make(chan interface{})
+	go c.unmountMetrics(ctx, unmountedCh)
+
+	select {
+	case <-ctx.Done():
+		return
+	case <-unmountedCh:
+		c.log.Debug("collector is stopped")
+	}
 }
 
-func (c *collector) mountMetrics() {
+func (c *collector) mountMetrics(mountedCh chan interface{}) {
+	wg := &sync.WaitGroup{}
+
 	if c.config.Metric.Loadavg {
 		go loadavg(c.ctx, c.newWorkerChan(), c.readers.LoadAvg, c.log)
 	}
 	if c.config.Metric.CPU {
-		go startCPU(c.ctx, c.readers.CPU, c.log)
-		go cpu(c.ctx, c.newWorkerChan(), c.readers.CPU, c.log)
+		wg.Add(1)
+		go c.mountCPU(wg)
 	}
 	if c.config.Metric.Loaddisks {
-		go startLoadDisks(c.ctx, c.readers.LoadDisks, c.log)
-		go loadDisks(c.ctx, c.newWorkerChan(), c.readers.LoadDisks, c.log)
+		wg.Add(1)
+		go c.mountLoadDisks(wg)
 	}
 	if c.config.Metric.UsedFS {
-		go startUsedFS(c.ctx, c.readers.UsedFS, c.log)
-		go usedFS(c.ctx, c.newWorkerChan(), c.readers.UsedFS, c.log)
+		wg.Add(1)
+		go c.mountUsedFS(wg)
+	}
+
+	wg.Wait()
+	close(mountedCh)
+}
+
+func (c *collector) mountCPU(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	_, err := c.readers.CPU(c.ctx, symo.StartMetric)
+	if err != nil {
+		c.log.Debug(fmt.Errorf("cannot start cpu: %w", err))
+		return
+	}
+	go cpu(c.ctx, c.newWorkerChan(), c.readers.CPU, c.log)
+}
+
+func (c *collector) mountLoadDisks(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	_, err := c.readers.LoadDisks(c.ctx, symo.StartMetric)
+	if err != nil {
+		c.log.Debug(fmt.Errorf("cannot start load disks: %w", err))
+	}
+	go loadDisks(c.ctx, c.newWorkerChan(), c.readers.LoadDisks, c.log)
+}
+
+func (c *collector) mountUsedFS(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	_, err := c.readers.UsedFS(c.ctx, symo.StartMetric)
+	if err != nil {
+		c.log.Debug(fmt.Errorf("cannot start used fs: %w", err))
+	}
+	go usedFS(c.ctx, c.newWorkerChan(), c.readers.UsedFS, c.log)
+}
+
+func (c *collector) unmountMetrics(ctx context.Context, unmountedCh chan interface{}) {
+	for _, ch := range c.workerChans {
+		close(ch)
+	}
+
+	wg := &sync.WaitGroup{}
+
+	if c.config.Metric.Loaddisks {
+		wg.Add(1)
+		go c.unmountLoadDisks(ctx, wg)
+	}
+	if c.config.Metric.UsedFS {
+		wg.Add(1)
+		go c.unmountUsedFS(ctx, wg)
+	}
+
+	wg.Wait()
+	close(unmountedCh)
+}
+
+func (c *collector) unmountLoadDisks(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	_, err := c.readers.LoadDisks(ctx, symo.StopMetric)
+	if err != nil {
+		c.log.Debug(fmt.Errorf("cannot stop load disks: %w", err))
 	}
 }
 
-func (c *collector) stopMetrics() {
-	ctx := context.Background()
-	if c.config.Metric.Loaddisks {
-		go stopLoadDisks(ctx, c.readers.LoadDisks, c.log)
-	}
-	if c.config.Metric.UsedFS {
-		go stopUsedFS(ctx, c.readers.UsedFS, c.log)
+func (c *collector) unmountUsedFS(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	_, err := c.readers.UsedFS(ctx, symo.StopMetric)
+	if err != nil {
+		c.log.Debug(fmt.Errorf("cannot stop used fs: %w", err))
 	}
 }
 
@@ -105,27 +184,21 @@ func (c *collector) newWorkerChan() chan timePoint {
 	return ch
 }
 
-func (c *collector) unmountMetrics() {
-	for _, ch := range c.workerChans {
-		close(ch)
-	}
-}
-
 func (c *collector) work() {
+	defer close(c.closedCh)
+
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-c.ctx.Done():
-			close(c.closedCh)
 			return
 		default:
 		}
 
 		select {
 		case <-c.ctx.Done():
-			close(c.closedCh)
 			return
 		case mess, ok := <-c.toCollectorCh:
 			if !ok {
