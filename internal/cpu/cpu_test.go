@@ -17,12 +17,14 @@ func TestCPU(t *testing.T) {
 	require.NoError(t, err)
 
 	time.Sleep(time.Second)
-	cpu, err := Read(ctx, symo.GetMetric)
+
+	data, err := Read(ctx, symo.GetMetric)
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, cpu.User, 0.0)
-	require.LessOrEqual(t, cpu.User, 100.0)
-	require.GreaterOrEqual(t, cpu.System, 0.0)
-	require.LessOrEqual(t, cpu.System, 100.0)
-	require.GreaterOrEqual(t, cpu.Idle, 0.0)
-	require.LessOrEqual(t, cpu.Idle, 100.0)
+	require.NotNil(t, data)
+	require.GreaterOrEqual(t, data.User, 0.0)
+	require.LessOrEqual(t, data.User, 100.0)
+	require.GreaterOrEqual(t, data.System, 0.0)
+	require.LessOrEqual(t, data.System, 100.0)
+	require.GreaterOrEqual(t, data.Idle, 0.0)
+	require.LessOrEqual(t, data.Idle, 100.0)
 }

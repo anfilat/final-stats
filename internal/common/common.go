@@ -2,7 +2,6 @@ package common
 
 import (
 	"io/ioutil"
-	"math"
 	"path/filepath"
 	"strings"
 )
@@ -15,13 +14,13 @@ func ReadProcFile(name string) ([]string, error) {
 		return nil, err
 	}
 
-	return strings.Split(strings.TrimSpace(string(content)), "\n"), nil
+	return SplitLines(string(content)), nil
+}
+
+func SplitLines(content string) []string {
+	return strings.Split(strings.TrimSpace(content), "\n")
 }
 
 func procFileName(name string) string {
 	return filepath.Join(procPath, name)
-}
-
-func NumToFix2(num float64) float64 {
-	return math.Round(num*100) / 100
 }

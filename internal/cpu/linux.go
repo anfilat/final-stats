@@ -16,6 +16,10 @@ func getCPU() (*cpuData, error) {
 		return nil, fmt.Errorf("cannot read the stat file: %w", err)
 	}
 
+	return parseCPU(content)
+}
+
+func parseCPU(content []string) (*cpuData, error) {
 	values := strings.Fields(content[0])[1:]
 
 	user, err := strconv.ParseInt(values[0], 10, 64)

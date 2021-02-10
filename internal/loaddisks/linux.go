@@ -88,7 +88,7 @@ func stop(ctx context.Context) error {
 	}
 }
 
-func readOut(out io.ReadCloser) {
+func readOut(out io.Reader) {
 	scanner := bufio.NewScanner(out)
 	chunk := make([]string, 0, 16)
 	header := true
