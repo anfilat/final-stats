@@ -16,6 +16,7 @@ import (
 	"github.com/anfilat/final-stats/internal/loaddisks"
 	"github.com/anfilat/final-stats/internal/logger"
 	"github.com/anfilat/final-stats/internal/symo"
+	"github.com/anfilat/final-stats/internal/usedfs"
 )
 
 var configFile string
@@ -55,6 +56,7 @@ func main() {
 		LoadAvg:   loadavg.Read,
 		CPU:       cpu.Read,
 		LoadDisks: loaddisks.Read,
+		UsedFS:    usedfs.Read,
 	}
 
 	toCollectorCh := make(symo.ClientsToCollectorCh, 1)

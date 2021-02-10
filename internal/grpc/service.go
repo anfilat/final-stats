@@ -95,5 +95,14 @@ func dataToGRPC(data *symo.Stats) *Stats {
 			})
 		}
 	}
+	if data.UsedFS != nil {
+		for _, fsData := range data.UsedFS {
+			result.UsedFs = append(result.UsedFs, &UsedFS{
+				Path:      fsData.Path,
+				UsedSpace: fsData.UsedSpace,
+				UsedInode: fsData.UsedInode,
+			})
+		}
+	}
 	return result
 }

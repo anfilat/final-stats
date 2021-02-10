@@ -24,11 +24,18 @@ message LoadDisk {
   double KBWrite = 4;
 }
 
+message UsedFS {
+  string Path = 1;
+  double UsedSpace = 2;
+  double UsedInode = 3;
+}
+
 message Stats {
   google.protobuf.Timestamp time = 1;
   LoadAvg load_avg = 2;
   CPU cpu = 3;
   repeated LoadDisk load_disks = 4;
+  repeated UsedFS used_fs = 5;
 }
 
 message StatsRequest {

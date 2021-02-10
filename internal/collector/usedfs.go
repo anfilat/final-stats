@@ -9,27 +9,27 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func startLoadDisks(ctx context.Context, reader symo.LoadDisks, log symo.Logger) {
+func startUsedFS(ctx context.Context, reader symo.UsedFS, log symo.Logger) {
 	_, err := reader(ctx, symo.StartMetric)
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return
 	}
 	if err != nil {
-		log.Debug(fmt.Errorf("cannot start load disks: %w", err))
+		log.Debug(fmt.Errorf("cannot start used fs: %w", err))
 	}
 }
 
-func stopLoadDisks(ctx context.Context, reader symo.LoadDisks, log symo.Logger) {
+func stopUsedFS(ctx context.Context, reader symo.UsedFS, log symo.Logger) {
 	_, err := reader(ctx, symo.StopMetric)
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 		return
 	}
 	if err != nil {
-		log.Debug(fmt.Errorf("cannot stop load disks: %w", err))
+		log.Debug(fmt.Errorf("cannot stop used fs: %w", err))
 	}
 }
 
-func loadDisks(ctx context.Context, ch <-chan timePoint, reader symo.LoadDisks, log symo.Logger) {
+func usedFS(ctx context.Context, ch <-chan timePoint, reader symo.UsedFS, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -47,10 +47,10 @@ func loadDisks(ctx context.Context, ch <-chan timePoint, reader symo.LoadDisks, 
 					return
 				}
 				if err != nil {
-					log.Debug(fmt.Errorf("cannot get load disks: %w", err))
+					log.Debug(fmt.Errorf("cannot get used fs: %w", err))
 					return
 				}
-				tp.point.LoadDisks = data
+				tp.point.UsedFS = data
 			}()
 		}
 	}

@@ -44,6 +44,7 @@ func configure(v *viper.Viper) {
 	v.SetDefault("metric.loadavg", true)
 	v.SetDefault("metric.cpu", true)
 	v.SetDefault("metric.loaddisks", true)
+	v.SetDefault("metric.usedfs", true)
 }
 
 type Config struct {
@@ -96,4 +97,5 @@ type MetricConf struct {
 	Loadavg   bool
 	CPU       bool
 	Loaddisks bool
+	UsedFS    bool
 }

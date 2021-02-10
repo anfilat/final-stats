@@ -49,6 +49,7 @@ type Stats struct {
 	LoadAvg   *LoadAvgData
 	CPU       *CPUData
 	LoadDisks LoadDisksData
+	UsedFS    UsedFSData
 }
 
 // хранилище собранных посекундных наборов метрик.
@@ -59,6 +60,7 @@ type Point struct {
 	LoadAvg   *LoadAvgData
 	CPU       *CPUData
 	LoadDisks LoadDisksData
+	UsedFS    UsedFSData
 }
 
 type MetricCommand int
@@ -74,6 +76,7 @@ type MetricReaders struct {
 	LoadAvg   LoadAvg
 	CPU       CPU
 	LoadDisks LoadDisks
+	UsedFS    UsedFS
 }
 
 // функция возвращающая среднюю загрузку системы.
@@ -101,11 +104,24 @@ type LoadDisks func(ctx context.Context, action MetricCommand) (LoadDisksData, e
 
 type LoadDisksData []DiskData
 
+// загрузка дисков.
 type DiskData struct {
 	Name    string
 	Tps     float64
 	KBRead  float64
 	KBWrite float64
+}
+
+// функция возвращающая использование файловых систем.
+type UsedFS func(ctx context.Context, action MetricCommand) (UsedFSData, error)
+
+type UsedFSData []FSData
+
+// использовано в каждой файловой системе.
+type FSData struct {
+	Path      string
+	UsedSpace float64
+	UsedInode float64
 }
 
 type GRPCServer interface {

@@ -1,3 +1,5 @@
+// +build linux
+
 package loaddisks
 
 import (
@@ -15,7 +17,7 @@ import (
 
 var (
 	mutex        sync.Mutex
-	isWorked     bool
+	isLive       bool
 	command      *exec.Cmd
 	cancelWork   context.CancelFunc
 	loadDiskErr  error
@@ -39,7 +41,8 @@ func start(ctx context.Context) error {
 
 	cancelableCtx, cancel := context.WithCancel(ctx)
 
-	cmd := exec.CommandContext(cancelableCtx, "sh", "-c", `iostat -dky 1`)
+	cmdLine := "iostat -dky 1"
+	cmd := exec.CommandContext(cancelableCtx, "sh", "-c", cmdLine)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		cancel()
@@ -54,21 +57,21 @@ func start(ctx context.Context) error {
 
 	go readOut(out)
 
-	isWorked = true
+	isLive = true
 	command = cmd
 	cancelWork = cancel
 	return nil
 }
 
 func stop(ctx context.Context) error {
-	if !isWorked {
+	if !isLive {
 		return nil
 	}
 
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	isWorked = false
+	isLive = false
 	cancelWork()
 
 	stopped := make(chan interface{})
@@ -112,7 +115,7 @@ func readOut(out io.ReadCloser) {
 }
 
 func counters(chunk []string) (symo.LoadDisksData, error) {
-	result := make([]symo.DiskData, 0, len(chunk))
+	result := make(symo.LoadDisksData, 0, len(chunk))
 	for _, line := range chunk {
 		line = strings.ReplaceAll(line, ",", ".")
 
@@ -150,7 +153,7 @@ func saveLoadDisk(data symo.LoadDisksData, err error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if !isWorked {
+	if !isLive {
 		return
 	}
 

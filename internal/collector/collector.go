@@ -82,12 +82,19 @@ func (c *collector) mountMetrics() {
 		go startLoadDisks(c.ctx, c.readers.LoadDisks, c.log)
 		go loadDisks(c.ctx, c.newWorkerChan(), c.readers.LoadDisks, c.log)
 	}
+	if c.config.Metric.UsedFS {
+		go startUsedFS(c.ctx, c.readers.UsedFS, c.log)
+		go usedFS(c.ctx, c.newWorkerChan(), c.readers.UsedFS, c.log)
+	}
 }
 
 func (c *collector) stopMetrics() {
 	ctx := context.Background()
 	if c.config.Metric.Loaddisks {
 		go stopLoadDisks(ctx, c.readers.LoadDisks, c.log)
+	}
+	if c.config.Metric.UsedFS {
+		go stopUsedFS(ctx, c.readers.UsedFS, c.log)
 	}
 }
 
