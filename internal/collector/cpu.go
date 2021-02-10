@@ -8,7 +8,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func cpu(ctx context.Context, ch <-chan timePoint, collector symo.CPU, log symo.Logger) {
+func cpuCollect(ctx context.Context, ch <-chan timePoint, collector symo.CPU, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():

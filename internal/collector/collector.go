@@ -89,7 +89,7 @@ func (c *collector) mountMetrics(mountedCh chan interface{}) {
 	wg := &sync.WaitGroup{}
 
 	if c.config.Metric.Loadavg {
-		go loadavg(c.ctx, c.newWorkerChan(), c.collectors.LoadAvg, c.log)
+		go loadavgCollect(c.ctx, c.newWorkerChan(), c.collectors.LoadAvg, c.log)
 	}
 	if c.config.Metric.CPU {
 		wg.Add(1)
@@ -116,7 +116,7 @@ func (c *collector) mountCPU(wg *sync.WaitGroup) {
 		c.log.Debug(fmt.Errorf("cannot start cpu: %w", err))
 		return
 	}
-	go cpu(c.ctx, c.newWorkerChan(), c.collectors.CPU, c.log)
+	go cpuCollect(c.ctx, c.newWorkerChan(), c.collectors.CPU, c.log)
 }
 
 func (c *collector) mountLoadDisks(wg *sync.WaitGroup) {
@@ -126,7 +126,7 @@ func (c *collector) mountLoadDisks(wg *sync.WaitGroup) {
 	if err != nil {
 		c.log.Debug(fmt.Errorf("cannot start load disks: %w", err))
 	}
-	go loadDisks(c.ctx, c.newWorkerChan(), c.collectors.LoadDisks, c.log)
+	go loadDisksCollect(c.ctx, c.newWorkerChan(), c.collectors.LoadDisks, c.log)
 }
 
 func (c *collector) mountUsedFS(wg *sync.WaitGroup) {
@@ -136,7 +136,7 @@ func (c *collector) mountUsedFS(wg *sync.WaitGroup) {
 	if err != nil {
 		c.log.Debug(fmt.Errorf("cannot start used fs: %w", err))
 	}
-	go usedFS(c.ctx, c.newWorkerChan(), c.collectors.UsedFS, c.log)
+	go usedFSCollect(c.ctx, c.newWorkerChan(), c.collectors.UsedFS, c.log)
 }
 
 func (c *collector) unmountMetrics(ctx context.Context, unmountedCh chan interface{}) {
@@ -178,6 +178,9 @@ func (c *collector) unmountUsedFS(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func (c *collector) newWorkerChan() chan timePoint {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	ch := make(chan timePoint, 1)
 	c.workerChans = append(c.workerChans, ch)
 

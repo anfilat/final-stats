@@ -8,7 +8,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func loadavg(ctx context.Context, ch <-chan timePoint, collector symo.LoadAvg, log symo.Logger) {
+func loadavgCollect(ctx context.Context, ch <-chan timePoint, collector symo.LoadAvg, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():

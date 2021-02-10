@@ -40,7 +40,7 @@ func TestCPU(t *testing.T) {
 		close(ch)
 	}()
 
-	cpu(ctx, ch, collector, log)
+	cpuCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, &cpuData, point.CPU)
@@ -68,7 +68,7 @@ func TestCPUError(t *testing.T) {
 		close(ch)
 	}()
 
-	cpu(ctx, ch, collector, log)
+	cpuCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.CPU)
@@ -83,5 +83,5 @@ func TestCPUCloseByContext(t *testing.T) {
 		cancel()
 	}()
 
-	cpu(ctx, ch, nil, nil)
+	cpuCollect(ctx, ch, nil, nil)
 }

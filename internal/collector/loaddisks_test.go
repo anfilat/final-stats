@@ -43,7 +43,7 @@ func TestLoadDisks(t *testing.T) {
 		close(ch)
 	}()
 
-	loadDisks(ctx, ch, collector, log)
+	loadDisksCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, ldData, point.LoadDisks)
@@ -71,7 +71,7 @@ func TestLoadDisksError(t *testing.T) {
 		close(ch)
 	}()
 
-	loadDisks(ctx, ch, collector, log)
+	loadDisksCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.LoadDisks)
@@ -86,5 +86,5 @@ func TestLoadDisksCloseByContext(t *testing.T) {
 		cancel()
 	}()
 
-	loadDisks(ctx, ch, nil, nil)
+	loadDisksCollect(ctx, ch, nil, nil)
 }

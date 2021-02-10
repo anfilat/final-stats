@@ -40,7 +40,7 @@ func TestLoadAvg(t *testing.T) {
 		close(ch)
 	}()
 
-	loadavg(ctx, ch, collector, log)
+	loadavgCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, &loadAvg, point.LoadAvg)
@@ -68,7 +68,7 @@ func TestLoadAvgError(t *testing.T) {
 		close(ch)
 	}()
 
-	loadavg(ctx, ch, collector, log)
+	loadavgCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.LoadAvg)
@@ -83,5 +83,5 @@ func TestLoadAvgCloseByContext(t *testing.T) {
 		cancel()
 	}()
 
-	loadavg(ctx, ch, nil, nil)
+	loadavgCollect(ctx, ch, nil, nil)
 }

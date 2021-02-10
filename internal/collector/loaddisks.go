@@ -8,7 +8,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func loadDisks(ctx context.Context, ch <-chan timePoint, collector symo.LoadDisks, log symo.Logger) {
+func loadDisksCollect(ctx context.Context, ch <-chan timePoint, collector symo.LoadDisks, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():

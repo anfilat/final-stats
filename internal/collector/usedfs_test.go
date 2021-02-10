@@ -42,7 +42,7 @@ func TestUsedFS(t *testing.T) {
 		close(ch)
 	}()
 
-	usedFS(ctx, ch, collector, log)
+	usedFSCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, ufData, point.UsedFS)
@@ -70,7 +70,7 @@ func TestUsedFSError(t *testing.T) {
 		close(ch)
 	}()
 
-	usedFS(ctx, ch, collector, log)
+	usedFSCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.UsedFS)
@@ -85,5 +85,5 @@ func TestUsedFSCloseByContext(t *testing.T) {
 		cancel()
 	}()
 
-	usedFS(ctx, ch, nil, nil)
+	usedFSCollect(ctx, ch, nil, nil)
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func usedFS(ctx context.Context, ch <-chan timePoint, collector symo.UsedFS, log symo.Logger) {
+func usedFSCollect(ctx context.Context, ch <-chan timePoint, collector symo.UsedFS, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():
