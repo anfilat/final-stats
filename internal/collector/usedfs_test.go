@@ -29,7 +29,7 @@ func TestUsedFS(t *testing.T) {
 		},
 	}
 
-	reader := func(_ context.Context, _ symo.MetricCommand) (symo.UsedFSData, error) {
+	collector := func(_ context.Context, _ symo.MetricCommand) (symo.UsedFSData, error) {
 		return ufData, nil
 	}
 
@@ -42,7 +42,7 @@ func TestUsedFS(t *testing.T) {
 		close(ch)
 	}()
 
-	usedFS(ctx, ch, reader, log)
+	usedFS(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, ufData, point.UsedFS)
@@ -57,7 +57,7 @@ func TestUsedFSError(t *testing.T) {
 	log := new(mocks.Logger)
 	log.On("Debug", mock.Anything)
 
-	reader := func(_ context.Context, _ symo.MetricCommand) (symo.UsedFSData, error) {
+	collector := func(_ context.Context, _ symo.MetricCommand) (symo.UsedFSData, error) {
 		return nil, fmt.Errorf("cannot parse df line")
 	}
 
@@ -70,7 +70,7 @@ func TestUsedFSError(t *testing.T) {
 		close(ch)
 	}()
 
-	usedFS(ctx, ch, reader, log)
+	usedFS(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.UsedFS)

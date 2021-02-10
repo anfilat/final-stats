@@ -24,7 +24,7 @@ var (
 	loadDiskData symo.LoadDisksData
 )
 
-func Read(ctx context.Context, action symo.MetricCommand) (symo.LoadDisksData, error) {
+func Collect(ctx context.Context, action symo.MetricCommand) (symo.LoadDisksData, error) {
 	switch action {
 	case symo.StartMetric:
 		return nil, start(ctx)

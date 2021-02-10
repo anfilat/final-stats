@@ -8,7 +8,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func cpu(ctx context.Context, ch <-chan timePoint, reader symo.CPU, log symo.Logger) {
+func cpu(ctx context.Context, ch <-chan timePoint, collector symo.CPU, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -21,7 +21,7 @@ func cpu(ctx context.Context, ch <-chan timePoint, reader symo.CPU, log symo.Log
 				workCtx, cancel := context.WithTimeout(ctx, timeToGetMetric)
 				defer cancel()
 
-				data, err := reader(workCtx, symo.GetMetric)
+				data, err := collector(workCtx, symo.GetMetric)
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 					return
 				}

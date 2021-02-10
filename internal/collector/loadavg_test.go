@@ -27,7 +27,7 @@ func TestLoadAvg(t *testing.T) {
 		Load15: 0.3,
 	}
 
-	reader := func(_ context.Context) (*symo.LoadAvgData, error) {
+	collector := func(_ context.Context) (*symo.LoadAvgData, error) {
 		return &loadAvg, nil
 	}
 
@@ -40,7 +40,7 @@ func TestLoadAvg(t *testing.T) {
 		close(ch)
 	}()
 
-	loadavg(ctx, ch, reader, log)
+	loadavg(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, &loadAvg, point.LoadAvg)
@@ -55,7 +55,7 @@ func TestLoadAvgError(t *testing.T) {
 	log := new(mocks.Logger)
 	log.On("Debug", mock.Anything)
 
-	reader := func(_ context.Context) (*symo.LoadAvgData, error) {
+	collector := func(_ context.Context) (*symo.LoadAvgData, error) {
 		return nil, fmt.Errorf("cannot read the loadavg file")
 	}
 
@@ -68,7 +68,7 @@ func TestLoadAvgError(t *testing.T) {
 		close(ch)
 	}()
 
-	loadavg(ctx, ch, reader, log)
+	loadavg(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.LoadAvg)

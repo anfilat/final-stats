@@ -27,7 +27,7 @@ func TestCPU(t *testing.T) {
 		Idle:   0.3,
 	}
 
-	reader := func(_ context.Context, _ symo.MetricCommand) (*symo.CPUData, error) {
+	collector := func(_ context.Context, _ symo.MetricCommand) (*symo.CPUData, error) {
 		return &cpuData, nil
 	}
 
@@ -40,7 +40,7 @@ func TestCPU(t *testing.T) {
 		close(ch)
 	}()
 
-	cpu(ctx, ch, reader, log)
+	cpu(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, &cpuData, point.CPU)
@@ -55,7 +55,7 @@ func TestCPUError(t *testing.T) {
 	log := new(mocks.Logger)
 	log.On("Debug", mock.Anything)
 
-	reader := func(_ context.Context, _ symo.MetricCommand) (*symo.CPUData, error) {
+	collector := func(_ context.Context, _ symo.MetricCommand) (*symo.CPUData, error) {
 		return nil, fmt.Errorf("cannot read the stat file")
 	}
 
@@ -68,7 +68,7 @@ func TestCPUError(t *testing.T) {
 		close(ch)
 	}()
 
-	cpu(ctx, ch, reader, log)
+	cpu(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.CPU)

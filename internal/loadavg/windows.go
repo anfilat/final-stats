@@ -26,7 +26,7 @@ var (
 	loadAvgGoroutineOnce sync.Once
 )
 
-func Read(_ context.Context) (*symo.LoadAvgData, error) {
+func Collect(_ context.Context) (*symo.LoadAvgData, error) {
 	loadAvgGoroutineOnce.Do(func() {
 		go loadAvgGoroutine()
 	})

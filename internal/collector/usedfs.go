@@ -8,7 +8,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func usedFS(ctx context.Context, ch <-chan timePoint, reader symo.UsedFS, log symo.Logger) {
+func usedFS(ctx context.Context, ch <-chan timePoint, collector symo.UsedFS, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -21,7 +21,7 @@ func usedFS(ctx context.Context, ch <-chan timePoint, reader symo.UsedFS, log sy
 				workCtx, cancel := context.WithTimeout(ctx, timeToGetMetric)
 				defer cancel()
 
-				data, err := reader(workCtx, symo.GetMetric)
+				data, err := collector(workCtx, symo.GetMetric)
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 					return
 				}

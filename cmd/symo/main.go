@@ -52,11 +52,11 @@ func main() {
 
 	stopper := newServiceStopper()
 
-	readers := symo.MetricReaders{
-		LoadAvg:   loadavg.Read,
-		CPU:       cpu.Read,
-		LoadDisks: loaddisks.Read,
-		UsedFS:    usedfs.Read,
+	collectors := symo.MetricCollectors{
+		LoadAvg:   loadavg.Collect,
+		CPU:       cpu.Collect,
+		LoadDisks: loaddisks.Collect,
+		UsedFS:    usedfs.Collect,
 	}
 
 	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
@@ -67,7 +67,7 @@ func main() {
 	stopper.add(clientsService.Stop)
 
 	collectorService := collector.NewCollector(logg, config)
-	collectorService.Start(mainCtx, readers, toCollectorCh, toClientsCh)
+	collectorService.Start(mainCtx, collectors, toCollectorCh, toClientsCh)
 	stopper.add(collectorService.Stop)
 
 	grpcServer := grpc.NewServer(logg, config)

@@ -13,12 +13,12 @@ import (
 func TestLoadDisk(t *testing.T) {
 	ctx := context.Background()
 
-	_, err := Read(ctx, symo.StartMetric)
+	_, err := Collect(ctx, symo.StartMetric)
 	require.NoError(t, err)
 
 	time.Sleep(1500 * time.Millisecond)
 
-	data, err := Read(ctx, symo.GetMetric)
+	data, err := Collect(ctx, symo.GetMetric)
 	require.NoError(t, err)
 	require.NotNil(t, data)
 	require.Greater(t, len(data), 0)
@@ -28,6 +28,6 @@ func TestLoadDisk(t *testing.T) {
 		require.GreaterOrEqual(t, disk.KBWrite, 0.0)
 	}
 
-	_, err = Read(ctx, symo.StopMetric)
+	_, err = Collect(ctx, symo.StopMetric)
 	require.NoError(t, err)
 }

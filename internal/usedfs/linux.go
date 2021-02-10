@@ -24,7 +24,7 @@ var (
 	fsData     symo.UsedFSData
 )
 
-func Read(ctx context.Context, action symo.MetricCommand) (symo.UsedFSData, error) {
+func Collect(ctx context.Context, action symo.MetricCommand) (symo.UsedFSData, error) {
 	switch action {
 	case symo.StartMetric:
 		return nil, start(ctx)

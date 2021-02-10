@@ -13,12 +13,12 @@ import (
 func TestCPU(t *testing.T) {
 	ctx := context.Background()
 
-	_, err := Read(ctx, symo.StartMetric)
+	_, err := Collect(ctx, symo.StartMetric)
 	require.NoError(t, err)
 
 	time.Sleep(time.Second)
 
-	data, err := Read(ctx, symo.GetMetric)
+	data, err := Collect(ctx, symo.GetMetric)
 	require.NoError(t, err)
 	require.NotNil(t, data)
 	require.GreaterOrEqual(t, data.User, 0.0)

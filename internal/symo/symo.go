@@ -8,7 +8,7 @@ import (
 
 // сервис, запускающий каждую секунду сбор статистики и ее отправку клиентам.
 type Collector interface {
-	Start(context.Context, MetricReaders, <-chan CollectorCommand, chan<- MetricsData)
+	Start(context.Context, MetricCollectors, <-chan CollectorCommand, chan<- MetricsData)
 	Stop(context.Context)
 }
 
@@ -72,7 +72,7 @@ const (
 )
 
 // набор функций, возвращающих свои метрики. Передается сервису Collector при его создании.
-type MetricReaders struct {
+type MetricCollectors struct {
 	LoadAvg   LoadAvg
 	CPU       CPU
 	LoadDisks LoadDisks

@@ -15,7 +15,7 @@ type cpuData struct {
 
 var prevData cpuData
 
-func Read(_ context.Context, action symo.MetricCommand) (*symo.CPUData, error) {
+func Collect(_ context.Context, action symo.MetricCommand) (*symo.CPUData, error) {
 	data, err := getCPU()
 	if err != nil {
 		return nil, err

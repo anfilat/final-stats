@@ -8,7 +8,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func loadavg(ctx context.Context, ch <-chan timePoint, reader symo.LoadAvg, log symo.Logger) {
+func loadavg(ctx context.Context, ch <-chan timePoint, collector symo.LoadAvg, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -21,7 +21,7 @@ func loadavg(ctx context.Context, ch <-chan timePoint, reader symo.LoadAvg, log 
 				workCtx, cancel := context.WithTimeout(ctx, timeToGetMetric)
 				defer cancel()
 
-				data, err := reader(workCtx)
+				data, err := collector(workCtx)
 				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 					return
 				}

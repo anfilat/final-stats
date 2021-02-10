@@ -10,7 +10,7 @@ import (
 func TestLoadAvg(t *testing.T) {
 	ctx := context.Background()
 
-	data, err := Read(ctx)
+	data, err := Collect(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, data)
 	require.GreaterOrEqual(t, data.Load1, 0.0)

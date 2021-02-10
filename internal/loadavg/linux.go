@@ -12,7 +12,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func Read(_ context.Context) (*symo.LoadAvgData, error) {
+func Collect(_ context.Context) (*symo.LoadAvgData, error) {
 	content, err := common.ReadProcFile("loadavg")
 	if err != nil {
 		return nil, fmt.Errorf("cannot read the loadavg file: %w", err)

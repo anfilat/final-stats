@@ -30,7 +30,7 @@ func TestLoadDisks(t *testing.T) {
 		},
 	}
 
-	reader := func(_ context.Context, _ symo.MetricCommand) (symo.LoadDisksData, error) {
+	collector := func(_ context.Context, _ symo.MetricCommand) (symo.LoadDisksData, error) {
 		return ldData, nil
 	}
 
@@ -43,7 +43,7 @@ func TestLoadDisks(t *testing.T) {
 		close(ch)
 	}()
 
-	loadDisks(ctx, ch, reader, log)
+	loadDisks(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, ldData, point.LoadDisks)
@@ -58,7 +58,7 @@ func TestLoadDisksError(t *testing.T) {
 	log := new(mocks.Logger)
 	log.On("Debug", mock.Anything)
 
-	reader := func(_ context.Context, _ symo.MetricCommand) (symo.LoadDisksData, error) {
+	collector := func(_ context.Context, _ symo.MetricCommand) (symo.LoadDisksData, error) {
 		return nil, fmt.Errorf("cannot parse iostat line")
 	}
 
@@ -71,7 +71,7 @@ func TestLoadDisksError(t *testing.T) {
 		close(ch)
 	}()
 
-	loadDisks(ctx, ch, reader, log)
+	loadDisks(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.LoadDisks)
