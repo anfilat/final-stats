@@ -13,10 +13,7 @@ func loadDisksCollect(ctx context.Context, ch <-chan timePoint, collector symo.L
 		select {
 		case <-ctx.Done():
 			return
-		case tp, ok := <-ch:
-			if !ok {
-				return
-			}
+		case tp := <-ch:
 			func() {
 				workCtx, cancel := context.WithTimeout(ctx, timeToGetMetric)
 				defer cancel()

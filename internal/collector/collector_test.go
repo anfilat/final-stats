@@ -24,7 +24,7 @@ func TestCollectorStartStop(t *testing.T) {
 	require.NoError(t, err)
 
 	log := new(mocks.Logger)
-	log.On("Debug", mock.Anything)
+	log.On("Debug", "collector is stopped")
 
 	collectors := symo.MetricCollectors{
 		LoadAvg:   loadavg.Collect,
@@ -37,6 +37,37 @@ func TestCollectorStartStop(t *testing.T) {
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
+	collectorService := NewCollector(log, config)
+	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
+
+	stopCtx := context.Background()
+	collectorService.Stop(stopCtx)
+
+	log.AssertExpectations(t)
+	require.Len(t, toClientsCh, 0)
+}
+
+func TestCollectorStartWithCanceledContext(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	config, err := symo.NewConfig("")
+	require.NoError(t, err)
+
+	log := new(mocks.Logger)
+	log.On("Debug", mock.Anything)
+
+	collectors := symo.MetricCollectors{
+		LoadAvg:   loadavg.Collect,
+		CPU:       cpu.Collect,
+		LoadDisks: loaddisks.Collect,
+		UsedFS:    usedfs.Collect,
+	}
+
+	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
+	toClientsCh := make(symo.CollectorToClientsCh, 1)
+
+	startCtx, cancel := context.WithCancel(context.Background())
+	cancel()
 	collectorService := NewCollector(log, config)
 	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
 

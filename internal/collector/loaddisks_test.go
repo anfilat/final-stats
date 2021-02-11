@@ -40,7 +40,8 @@ func TestLoadDisks(t *testing.T) {
 			time:  time.Now().Truncate(time.Second),
 			point: point,
 		}
-		close(ch)
+		time.Sleep(10 * time.Millisecond)
+		cancel()
 	}()
 
 	loadDisksCollect(ctx, ch, collector, log)
@@ -68,23 +69,12 @@ func TestLoadDisksError(t *testing.T) {
 			time:  time.Now().Truncate(time.Second),
 			point: point,
 		}
-		close(ch)
+		time.Sleep(10 * time.Millisecond)
+		cancel()
 	}()
 
 	loadDisksCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.LoadDisks)
-}
-
-func TestLoadDisksCloseByContext(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	ch := make(chan timePoint, 1)
-
-	go func() {
-		cancel()
-	}()
-
-	loadDisksCollect(ctx, ch, nil, nil)
 }

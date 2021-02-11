@@ -2,6 +2,7 @@ package cpu
 
 import (
 	"context"
+	"sync"
 
 	"github.com/anfilat/final-stats/internal/symo"
 )
@@ -13,13 +14,19 @@ type cpuData struct {
 	idle   float64
 }
 
-var prevData cpuData
+var (
+	mutex    sync.Mutex
+	prevData cpuData
+)
 
 func Collect(_ context.Context, action symo.MetricCommand) (*symo.CPUData, error) {
 	data, err := getCPU()
 	if err != nil {
 		return nil, err
 	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	if action == symo.StartMetric {
 		prevData = *data

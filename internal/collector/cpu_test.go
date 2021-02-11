@@ -37,7 +37,8 @@ func TestCPU(t *testing.T) {
 			time:  time.Now().Truncate(time.Second),
 			point: point,
 		}
-		close(ch)
+		time.Sleep(10 * time.Millisecond)
+		cancel()
 	}()
 
 	cpuCollect(ctx, ch, collector, log)
@@ -65,23 +66,12 @@ func TestCPUError(t *testing.T) {
 			time:  time.Now().Truncate(time.Second),
 			point: point,
 		}
-		close(ch)
+		time.Sleep(10 * time.Millisecond)
+		cancel()
 	}()
 
 	cpuCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.CPU)
-}
-
-func TestCPUCloseByContext(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	ch := make(chan timePoint, 1)
-
-	go func() {
-		cancel()
-	}()
-
-	cpuCollect(ctx, ch, nil, nil)
 }

@@ -52,7 +52,6 @@ func (c *clients) Stop(ctx context.Context) {
 		client.close()
 	}
 
-	close(c.toCollectorCh)
 	c.log.Debug("clients is stopped")
 }
 
@@ -64,10 +63,7 @@ func (c *clients) work() {
 			close(c.closedCh)
 			c.mutex.Unlock()
 			return
-		case data, ok := <-c.toClientsCh:
-			if !ok {
-				return
-			}
+		case data := <-c.toClientsCh:
 			c.sendStat(&data)
 		}
 	}

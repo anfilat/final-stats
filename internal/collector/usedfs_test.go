@@ -39,7 +39,8 @@ func TestUsedFS(t *testing.T) {
 			time:  time.Now().Truncate(time.Second),
 			point: point,
 		}
-		close(ch)
+		time.Sleep(10 * time.Millisecond)
+		cancel()
 	}()
 
 	usedFSCollect(ctx, ch, collector, log)
@@ -67,23 +68,12 @@ func TestUsedFSError(t *testing.T) {
 			time:  time.Now().Truncate(time.Second),
 			point: point,
 		}
-		close(ch)
+		time.Sleep(10 * time.Millisecond)
+		cancel()
 	}()
 
 	usedFSCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.UsedFS)
-}
-
-func TestUsedFSCloseByContext(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	ch := make(chan timePoint, 1)
-
-	go func() {
-		cancel()
-	}()
-
-	usedFSCollect(ctx, ch, nil, nil)
 }

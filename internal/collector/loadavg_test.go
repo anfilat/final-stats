@@ -37,7 +37,8 @@ func TestLoadAvg(t *testing.T) {
 			time:  time.Now().Truncate(time.Second),
 			point: point,
 		}
-		close(ch)
+		time.Sleep(10 * time.Millisecond)
+		cancel()
 	}()
 
 	loadavgCollect(ctx, ch, collector, log)
@@ -65,23 +66,12 @@ func TestLoadAvgError(t *testing.T) {
 			time:  time.Now().Truncate(time.Second),
 			point: point,
 		}
-		close(ch)
+		time.Sleep(10 * time.Millisecond)
+		cancel()
 	}()
 
 	loadavgCollect(ctx, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.LoadAvg)
-}
-
-func TestLoadAvgCloseByContext(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	ch := make(chan timePoint, 1)
-
-	go func() {
-		cancel()
-	}()
-
-	loadavgCollect(ctx, ch, nil, nil)
 }
