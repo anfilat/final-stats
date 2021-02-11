@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -14,10 +13,7 @@ import (
 )
 
 func TestLoadDisks(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ch := make(chan timePoint, 1)
+	ctx, mutex, ch, point := testCollector()
 
 	log := new(mocks.Logger)
 
@@ -34,27 +30,14 @@ func TestLoadDisks(t *testing.T) {
 		return ldData, nil
 	}
 
-	point := &symo.Point{}
-	go func() {
-		ch <- timePoint{
-			time:  time.Now().Truncate(time.Second),
-			point: point,
-		}
-		time.Sleep(10 * time.Millisecond)
-		cancel()
-	}()
-
-	loadDisksCollect(ctx, ch, collector, log)
+	loadDisksCollect(ctx, mutex, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, ldData, point.LoadDisks)
 }
 
 func TestLoadDisksError(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ch := make(chan timePoint, 1)
+	ctx, mutex, ch, point := testCollector()
 
 	log := new(mocks.Logger)
 	log.On("Debug", mock.Anything)
@@ -63,17 +46,7 @@ func TestLoadDisksError(t *testing.T) {
 		return nil, fmt.Errorf("cannot parse iostat line")
 	}
 
-	point := &symo.Point{}
-	go func() {
-		ch <- timePoint{
-			time:  time.Now().Truncate(time.Second),
-			point: point,
-		}
-		time.Sleep(10 * time.Millisecond)
-		cancel()
-	}()
-
-	loadDisksCollect(ctx, ch, collector, log)
+	loadDisksCollect(ctx, mutex, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.LoadDisks)

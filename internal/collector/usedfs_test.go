@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -14,10 +13,7 @@ import (
 )
 
 func TestUsedFS(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ch := make(chan timePoint, 1)
+	ctx, mutex, ch, point := testCollector()
 
 	log := new(mocks.Logger)
 
@@ -33,27 +29,14 @@ func TestUsedFS(t *testing.T) {
 		return ufData, nil
 	}
 
-	point := &symo.Point{}
-	go func() {
-		ch <- timePoint{
-			time:  time.Now().Truncate(time.Second),
-			point: point,
-		}
-		time.Sleep(10 * time.Millisecond)
-		cancel()
-	}()
-
-	usedFSCollect(ctx, ch, collector, log)
+	usedFSCollect(ctx, mutex, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, ufData, point.UsedFS)
 }
 
 func TestUsedFSError(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ch := make(chan timePoint, 1)
+	ctx, mutex, ch, point := testCollector()
 
 	log := new(mocks.Logger)
 	log.On("Debug", mock.Anything)
@@ -62,17 +45,7 @@ func TestUsedFSError(t *testing.T) {
 		return nil, fmt.Errorf("cannot parse df line")
 	}
 
-	point := &symo.Point{}
-	go func() {
-		ch <- timePoint{
-			time:  time.Now().Truncate(time.Second),
-			point: point,
-		}
-		time.Sleep(10 * time.Millisecond)
-		cancel()
-	}()
-
-	usedFSCollect(ctx, ch, collector, log)
+	usedFSCollect(ctx, mutex, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.UsedFS)

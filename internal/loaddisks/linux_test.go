@@ -21,7 +21,7 @@ func TestReadOut(t *testing.T) {
 	readOut(bytes.NewBuffer(content))
 	data, err := get()
 	require.NoError(t, err)
-	require.Equal(t, 2, len(data))
+	require.Len(t, data, 2)
 
 	require.Equal(t, "sda", data[0].Name)
 	require.Equal(t, 79.0, data[0].Tps)
@@ -40,7 +40,7 @@ func TestCounters(t *testing.T) {
 
 	data, err := counters(common.SplitLines(string(content)))
 	require.NoError(t, err)
-	require.Equal(t, 2, len(data))
+	require.Len(t, data, 2)
 
 	require.Equal(t, "sda", data[0].Name)
 	require.Equal(t, 79.0, data[0].Tps)
@@ -58,7 +58,7 @@ func TestCountersWitEmptyData(t *testing.T) {
 
 	data, err := counters(chunk)
 	require.NoError(t, err)
-	require.Equal(t, 0, len(data))
+	require.Len(t, data, 0)
 }
 
 func TestCountersFail(t *testing.T) {

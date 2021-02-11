@@ -22,7 +22,7 @@ func TestReadOut(t *testing.T) {
 	readOut(bytes.NewBuffer(content))
 	data, err := get()
 	require.NoError(t, err)
-	require.Equal(t, 5, len(data))
+	require.Len(t, data, 5)
 
 	require.Equal(t, "/", data[0].Path)
 	require.Equal(t, 75.76559030572227, data[0].UsedSpace)
@@ -39,7 +39,7 @@ func TestUsage(t *testing.T) {
 
 	data, err := usage(common.SplitLines(string(content)))
 	require.NoError(t, err)
-	require.Equal(t, 5, len(data))
+	require.Len(t, data, 5)
 
 	require.Equal(t, "/", data[0].Path)
 	require.Equal(t, 75.76559030572227, data[0].UsedSpace)
@@ -55,7 +55,7 @@ func TestUsageWitEmptyData(t *testing.T) {
 
 	data, err := usage(chunk)
 	require.NoError(t, err)
-	require.Equal(t, 0, len(data))
+	require.Len(t, data, 0)
 }
 
 func TestUsageFail(t *testing.T) {

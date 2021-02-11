@@ -106,7 +106,14 @@ func TestCollectorTick(t *testing.T) {
 	toCollectorCh <- symo.Start
 	time.Sleep(1050 * time.Millisecond)
 	require.Len(t, toClientsCh, 1)
-	<-toClientsCh
+	data := <-toClientsCh
+	// текущая секунда еще не заполнена, предыдущих нет - статистика должна быть пустой
+	require.Len(t, data.Points, 0)
+
+	time.Sleep(1050 * time.Millisecond)
+	require.Len(t, toClientsCh, 1)
+	data = <-toClientsCh
+	require.Len(t, data.Points, 1)
 
 	// тик без клиентов
 	toCollectorCh <- symo.Stop

@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-func loadDisksCollect(ctx context.Context, ch <-chan timePoint, collector symo.LoadDisks, log symo.Logger) {
+func loadDisksCollect(ctx context.Context, mutex sync.Locker, ch <-chan timePoint, collector symo.LoadDisks, log symo.Logger) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -26,6 +27,10 @@ func loadDisksCollect(ctx context.Context, ch <-chan timePoint, collector symo.L
 					log.Debug(fmt.Errorf("cannot get load disks: %w", err))
 					return
 				}
+
+				mutex.Lock()
+				defer mutex.Unlock()
+
 				tp.point.LoadDisks = data
 			}()
 		}

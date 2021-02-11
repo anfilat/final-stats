@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -14,10 +13,7 @@ import (
 )
 
 func TestCPU(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ch := make(chan timePoint, 1)
+	ctx, mutex, ch, point := testCollector()
 
 	log := new(mocks.Logger)
 
@@ -31,27 +27,14 @@ func TestCPU(t *testing.T) {
 		return &cpuData, nil
 	}
 
-	point := &symo.Point{}
-	go func() {
-		ch <- timePoint{
-			time:  time.Now().Truncate(time.Second),
-			point: point,
-		}
-		time.Sleep(10 * time.Millisecond)
-		cancel()
-	}()
-
-	cpuCollect(ctx, ch, collector, log)
+	cpuCollect(ctx, mutex, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Equal(t, &cpuData, point.CPU)
 }
 
 func TestCPUError(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	ch := make(chan timePoint, 1)
+	ctx, mutex, ch, point := testCollector()
 
 	log := new(mocks.Logger)
 	log.On("Debug", mock.Anything)
@@ -60,17 +43,7 @@ func TestCPUError(t *testing.T) {
 		return nil, fmt.Errorf("cannot read the stat file")
 	}
 
-	point := &symo.Point{}
-	go func() {
-		ch <- timePoint{
-			time:  time.Now().Truncate(time.Second),
-			point: point,
-		}
-		time.Sleep(10 * time.Millisecond)
-		cancel()
-	}()
-
-	cpuCollect(ctx, ch, collector, log)
+	cpuCollect(ctx, mutex, ch, collector, log)
 
 	log.AssertExpectations(t)
 	require.Nil(t, point.CPU)
