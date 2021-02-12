@@ -16,10 +16,35 @@ type cpuData struct {
 
 var (
 	mutex    sync.Mutex
-	prevData cpuData
+	prevData *cpuData
 )
 
 func Collect(_ context.Context, action symo.MetricCommand) (*symo.CPUData, error) {
+	switch action {
+	case symo.StartMetric:
+		return nil, start()
+	case symo.StopMetric:
+		return nil, nil
+	default:
+		return get()
+	}
+}
+
+func start() error {
+	data, err := getCPU()
+	if err != nil {
+		return err
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	prevData = data
+
+	return nil
+}
+
+func get() (*symo.CPUData, error) {
 	data, err := getCPU()
 	if err != nil {
 		return nil, err
@@ -28,8 +53,8 @@ func Collect(_ context.Context, action symo.MetricCommand) (*symo.CPUData, error
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if action == symo.StartMetric {
-		prevData = *data
+	if prevData == nil {
+		prevData = data
 		return nil, nil
 	}
 
@@ -43,6 +68,6 @@ func Collect(_ context.Context, action symo.MetricCommand) (*symo.CPUData, error
 		System: (data.system - prevData.system) / total * 100,
 		Idle:   (data.idle - prevData.idle) / total * 100,
 	}
-	prevData = *data
+	prevData = data
 	return result, nil
 }

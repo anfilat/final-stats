@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/benbjohnson/clock"
+
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
@@ -24,6 +26,7 @@ type collector struct {
 	toCollectorCh <-chan symo.CollectorCommand
 	toClientsCh   chan<- symo.MetricsData
 	log           symo.Logger
+	clock         clock.Clock
 }
 
 // информация, отправляемая горутинам, ответственным за сбор конкретных метрик.
@@ -32,10 +35,11 @@ type timePoint struct {
 	point *symo.Point // структура, в которую складываются метрики
 }
 
-func NewCollector(log symo.Logger, config symo.Config) symo.Collector {
+func NewCollector(log symo.Logger, config symo.Config, clock clock.Clock) symo.Collector {
 	return &collector{
 		config: config,
 		log:    log,
+		clock:  clock,
 	}
 }
 
@@ -186,9 +190,8 @@ func (c *collector) newWorkerChan() chan timePoint {
 func (c *collector) work() {
 	defer close(c.stoppedCh)
 
-	ticker := time.NewTicker(time.Second)
+	ticker := c.clock.Ticker(time.Second)
 	defer ticker.Stop()
-
 	for {
 		select {
 		case <-c.ctx.Done():

@@ -2,9 +2,11 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -37,7 +39,7 @@ func TestCollectorStartStop(t *testing.T) {
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
-	collectorService := NewCollector(log, config)
+	collectorService := NewCollector(log, config, clock.NewMock())
 	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
 
 	stopCtx := context.Background()
@@ -68,7 +70,7 @@ func TestCollectorStartWithCanceledContext(t *testing.T) {
 
 	startCtx, cancel := context.WithCancel(context.Background())
 	cancel()
-	collectorService := NewCollector(log, config)
+	collectorService := NewCollector(log, config, clock.NewMock())
 	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
 
 	stopCtx := context.Background()
@@ -88,37 +90,160 @@ func TestCollectorTick(t *testing.T) {
 	log.On("Debug", mock.Anything)
 	log.On("Debug", "tick ", mock.Anything)
 
+	laData := &symo.LoadAvgData{
+		Load1:  1,
+		Load5:  2,
+		Load15: 3,
+	}
+	LoadAvg := new(mocks.LoadAvg)
+	LoadAvg.On("Execute", mock.Anything).Return(laData, nil)
+
+	cpuData := &symo.CPUData{
+		User:   0.1,
+		System: 0.2,
+		Idle:   0.3,
+	}
+	CPU := new(mocks.CPU)
+	CPU.On("Execute", mock.Anything, mock.Anything).Return(cpuData, nil)
+
+	ldData := symo.LoadDisksData{
+		{
+			Name:    "sda",
+			Tps:     7,
+			KBRead:  8,
+			KBWrite: 9,
+		},
+	}
+	LoadDisks := new(mocks.LoadDisks)
+	LoadDisks.On("Execute", mock.Anything, mock.Anything).Return(ldData, nil)
+
+	fsData := symo.UsedFSData{
+		{
+			Path:      "/",
+			UsedSpace: 13,
+			UsedInode: 31,
+		},
+	}
+	UsedFS := new(mocks.UsedFS)
+	UsedFS.On("Execute", mock.Anything, mock.Anything).Return(fsData, nil)
+
 	collectors := symo.MetricCollectors{
-		LoadAvg:   loadavg.Collect,
-		CPU:       cpu.Collect,
-		LoadDisks: loaddisks.Collect,
-		UsedFS:    usedfs.Collect,
+		LoadAvg:   LoadAvg.Execute,
+		CPU:       CPU.Execute,
+		LoadDisks: LoadDisks.Execute,
+		UsedFS:    UsedFS.Execute,
 	}
 
 	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
-	collectorService := NewCollector(log, config)
+	mockedClock := clock.NewMock()
+	collectorService := NewCollector(log, config, mockedClock)
 	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
 
-	// тик с клиентами
+	time.Sleep(50 * time.Millisecond)
+
+	// есть клиенты
 	toCollectorCh <- symo.Start
-	time.Sleep(1050 * time.Millisecond)
+
+	mockedClock.Add(time.Second)
 	require.Len(t, toClientsCh, 1)
 	data := <-toClientsCh
 	// текущая секунда еще не заполнена, предыдущих нет - статистика должна быть пустой
 	require.Len(t, data.Points, 0)
 
-	time.Sleep(1050 * time.Millisecond)
+	mockedClock.Add(time.Second)
 	require.Len(t, toClientsCh, 1)
 	data = <-toClientsCh
 	require.Len(t, data.Points, 1)
+	for _, point := range data.Points {
+		require.Equal(t, laData, point.LoadAvg)
+		require.Equal(t, cpuData, point.CPU)
+		require.Equal(t, ldData, point.LoadDisks)
+		require.Equal(t, fsData, point.UsedFS)
+	}
 
-	// тик без клиентов
+	// нет клиентов
 	toCollectorCh <- symo.Stop
-	time.Sleep(1050 * time.Millisecond)
+
+	mockedClock.Add(time.Second)
 	require.Len(t, toClientsCh, 0)
+
+	stopCtx := context.Background()
+	collectorService.Stop(stopCtx)
+
+	log.AssertExpectations(t)
+}
+
+func TestCollectorTickWithErrors(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	config, err := symo.NewConfig("")
+	require.NoError(t, err)
+
+	log := new(mocks.Logger)
+	log.On("Debug", mock.Anything)
+	log.On("Debug", "tick ", mock.Anything)
+
+	laErr := errors.New("LoadAvg Error")
+	LoadAvg := new(mocks.LoadAvg)
+	LoadAvg.On("Execute", mock.Anything).Return(nil, laErr)
+
+	cpuErr := errors.New("CPU Error")
+	CPU := new(mocks.CPU)
+	CPU.On("Execute", mock.Anything, symo.StartMetric).Return(nil, nil)
+	CPU.On("Execute", mock.Anything, symo.StopMetric).Return(nil, nil)
+	CPU.On("Execute", mock.Anything, symo.GetMetric).Return(nil, cpuErr)
+
+	ldErr := errors.New("LoadDisks Error")
+	LoadDisks := new(mocks.LoadDisks)
+	LoadDisks.On("Execute", mock.Anything, symo.StartMetric).Return(nil, nil)
+	LoadDisks.On("Execute", mock.Anything, symo.StopMetric).Return(nil, nil)
+	LoadDisks.On("Execute", mock.Anything, symo.GetMetric).Return(nil, ldErr)
+
+	fsErr := errors.New("UsedFS Error")
+	UsedFS := new(mocks.UsedFS)
+	UsedFS.On("Execute", mock.Anything, symo.StartMetric).Return(nil, nil)
+	UsedFS.On("Execute", mock.Anything, symo.StopMetric).Return(nil, nil)
+	UsedFS.On("Execute", mock.Anything, symo.GetMetric).Return(nil, fsErr)
+
+	collectors := symo.MetricCollectors{
+		LoadAvg:   LoadAvg.Execute,
+		CPU:       CPU.Execute,
+		LoadDisks: LoadDisks.Execute,
+		UsedFS:    UsedFS.Execute,
+	}
+
+	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
+	toClientsCh := make(symo.CollectorToClientsCh, 1)
+
+	startCtx := context.Background()
+	mockedClock := clock.NewMock()
+	collectorService := NewCollector(log, config, mockedClock)
+	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
+
+	time.Sleep(50 * time.Millisecond)
+
+	toCollectorCh <- symo.Start
+
+	mockedClock.Add(time.Second)
+	require.Len(t, toClientsCh, 1)
+	data := <-toClientsCh
+	// текущая секунда еще не заполнена, предыдущих нет - статистика должна быть пустой
+	require.Len(t, data.Points, 0)
+
+	// все коллекторы вернули ошибки, данные должны быть пустые
+	mockedClock.Add(time.Second)
+	require.Len(t, toClientsCh, 1)
+	data = <-toClientsCh
+	require.Len(t, data.Points, 1)
+	for _, point := range data.Points {
+		require.Nil(t, point.LoadAvg)
+		require.Nil(t, point.CPU)
+		require.Nil(t, point.LoadDisks)
+		require.Nil(t, point.UsedFS)
+	}
 
 	stopCtx := context.Background()
 	collectorService.Stop(stopCtx)

@@ -86,6 +86,7 @@ func dataToGRPC(data *symo.Stats) *Stats {
 		}
 	}
 	if data.LoadDisks != nil {
+		result.LoadDisks = make([]*LoadDisk, 0, len(data.LoadDisks))
 		for _, diskData := range data.LoadDisks {
 			result.LoadDisks = append(result.LoadDisks, &LoadDisk{
 				Name:    diskData.Name,
@@ -96,6 +97,7 @@ func dataToGRPC(data *symo.Stats) *Stats {
 		}
 	}
 	if data.UsedFS != nil {
+		result.UsedFs = make([]*UsedFS, 0, len(data.UsedFS))
 		for _, fsData := range data.UsedFS {
 			result.UsedFs = append(result.UsedFs, &UsedFS{
 				Path:      fsData.Path,

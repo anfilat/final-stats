@@ -30,3 +30,13 @@ func TestUsedFS(t *testing.T) {
 	_, err = Collect(ctx, symo.StopMetric)
 	require.NoError(t, err)
 }
+
+func TestUsedFSStartWithCanceledContext(t *testing.T) {
+	startCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, _ = Collect(startCtx, symo.StartMetric)
+
+	ctx := context.Background()
+	_, err := Collect(ctx, symo.StopMetric)
+	require.NoError(t, err)
+}

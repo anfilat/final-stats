@@ -3,6 +3,7 @@ module github.com/anfilat/final-stats
 go 1.15
 
 require (
+	github.com/benbjohnson/clock v1.1.0
 	github.com/golang/protobuf v1.4.3
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/viper v1.7.1

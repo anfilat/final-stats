@@ -8,6 +8,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
+// общий код для тестирования всех горутин, отвечающих за сбор конкретных метрик.
 func testCollector() (context.Context, sync.Locker, <-chan timePoint, *symo.Point) {
 	ctx, cancel := context.WithCancel(context.Background())
 	mutex := &sync.Mutex{}

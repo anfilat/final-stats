@@ -25,11 +25,11 @@ func NewClients(log symo.Logger) symo.Clients {
 	}
 }
 
-func (c *clients) Start(ctx context.Context, toCollectorCh chan<- symo.CollectorCommand, toClientsCh <-chan symo.MetricsData) {
+func (c *clients) Start(_ context.Context, toCollectorCh chan<- symo.CollectorCommand, toClientsCh <-chan symo.MetricsData) {
 	c.toCollectorCh = toCollectorCh
 	c.toClientsCh = toClientsCh
 
-	c.ctx, c.ctxCancel = context.WithCancel(ctx)
+	c.ctx, c.ctxCancel = context.WithCancel(context.Background())
 	c.closedCh = make(chan interface{})
 	c.mutex = &sync.Mutex{}
 	c.clients = nil
@@ -42,26 +42,40 @@ func (c *clients) Stop(ctx context.Context) {
 
 	select {
 	case <-ctx.Done():
+		return
 	case <-c.closedCh:
 	}
 
+	c.closeClients()
+
+	c.log.Debug("clients is stopped")
+}
+
+func (c *clients) closeClients() {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	for _, client := range c.clients {
 		client.close()
 	}
-
-	c.log.Debug("clients is stopped")
 }
 
 func (c *clients) work() {
+	defer func() {
+		c.mutex.Lock()
+		close(c.closedCh)
+		c.mutex.Unlock()
+	}()
+
 	for {
 		select {
 		case <-c.ctx.Done():
-			c.mutex.Lock()
-			close(c.closedCh)
-			c.mutex.Unlock()
+			return
+		default:
+		}
+
+		select {
+		case <-c.ctx.Done():
 			return
 		case data := <-c.toClientsCh:
 			c.sendStat(&data)
