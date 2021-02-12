@@ -148,13 +148,13 @@ func TestCollectorTick(t *testing.T) {
 	toCollectorCh <- symo.Start
 
 	mockedClock.Add(time.Second)
-	require.Len(t, toClientsCh, 1)
+	time.Sleep(100 * time.Millisecond)
 	data := <-toClientsCh
 	// текущая секунда еще не заполнена, предыдущих нет - статистика должна быть пустой
 	require.Len(t, data.Points, 0)
 
 	mockedClock.Add(time.Second)
-	require.Len(t, toClientsCh, 1)
+	time.Sleep(100 * time.Millisecond)
 	data = <-toClientsCh
 	require.Len(t, data.Points, 1)
 	for _, point := range data.Points {
@@ -168,7 +168,11 @@ func TestCollectorTick(t *testing.T) {
 	toCollectorCh <- symo.Stop
 
 	mockedClock.Add(time.Second)
-	require.Len(t, toClientsCh, 0)
+	select {
+	case <-time.After(100 * time.Millisecond):
+	case <-toClientsCh:
+		require.Fail(t, "unexpected data in toClients channel")
+	}
 
 	stopCtx := context.Background()
 	collectorService.Stop(stopCtx)
@@ -228,14 +232,14 @@ func TestCollectorTickWithErrors(t *testing.T) {
 	toCollectorCh <- symo.Start
 
 	mockedClock.Add(time.Second)
-	require.Len(t, toClientsCh, 1)
+	time.Sleep(100 * time.Millisecond)
 	data := <-toClientsCh
 	// текущая секунда еще не заполнена, предыдущих нет - статистика должна быть пустой
 	require.Len(t, data.Points, 0)
 
 	// все коллекторы вернули ошибки, данные должны быть пустые
 	mockedClock.Add(time.Second)
-	require.Len(t, toClientsCh, 1)
+	time.Sleep(100 * time.Millisecond)
 	data = <-toClientsCh
 	require.Len(t, data.Points, 1)
 	for _, point := range data.Points {
