@@ -13,12 +13,12 @@ import (
 type Service struct {
 	UnimplementedSymoServer
 
-	clients symo.Clients
+	clients symo.NewClienter
 	config  symo.Config
 	log     symo.Logger
 }
 
-func newService(log symo.Logger, config symo.Config, clients symo.Clients) *Service {
+func newService(log symo.Logger, config symo.Config, clients symo.NewClienter) *Service {
 	return &Service{
 		clients: clients,
 		config:  config,

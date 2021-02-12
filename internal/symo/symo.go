@@ -12,12 +12,16 @@ type Collector interface {
 	Stop(context.Context)
 }
 
+type NewClienter interface {
+	// канал для получения отсылаемых данных и ф-ия отключения клиента
+	NewClient(ClientData) (<-chan *Stats, func(), error)
+}
+
 // сервис, хранящий всех подключенных клиентов и отсылающий им статистику.
 type Clients interface {
 	Start(context.Context, chan<- CollectorCommand, <-chan MetricsData)
 	Stop(context.Context)
-	// канал для получения отсылаемых данных и ф-ия отключения клиента
-	NewClient(ClientData) (<-chan *Stats, func(), error)
+	NewClienter
 }
 
 // ErrStopped ошибка, возвращаемая grpc запросу, если приложение останавливается.
@@ -125,7 +129,7 @@ type FSData struct {
 }
 
 type GRPCServer interface {
-	Start(addr string, clients Clients) error
+	Start(addr string, clients NewClienter) error
 	Stop(ctx context.Context)
 }
 

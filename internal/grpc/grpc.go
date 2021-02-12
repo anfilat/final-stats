@@ -23,7 +23,7 @@ func NewServer(log symo.Logger, config symo.Config) symo.GRPCServer {
 	}
 }
 
-func (g *grpcServer) Start(addr string, clients symo.Clients) error {
+func (g *grpcServer) Start(addr string, clients symo.NewClienter) error {
 	lsn, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
