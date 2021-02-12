@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benbjohnson/clock"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -39,7 +38,7 @@ func TestCollectorStartStop(t *testing.T) {
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
-	collectorService := NewCollector(log, config, clock.NewMock())
+	collectorService := NewCollector(log, config)
 	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
 
 	stopCtx := context.Background()
@@ -70,7 +69,7 @@ func TestCollectorStartWithCanceledContext(t *testing.T) {
 
 	startCtx, cancel := context.WithCancel(context.Background())
 	cancel()
-	collectorService := NewCollector(log, config, clock.NewMock())
+	collectorService := NewCollector(log, config)
 	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
 
 	stopCtx := context.Background()
@@ -138,8 +137,7 @@ func TestCollectorTick(t *testing.T) {
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
-	mockedClock := clock.NewMock()
-	collectorService := NewCollector(log, config, mockedClock)
+	collectorService := NewCollector(log, config)
 	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
 
 	time.Sleep(50 * time.Millisecond)
@@ -147,14 +145,12 @@ func TestCollectorTick(t *testing.T) {
 	// есть клиенты
 	toCollectorCh <- symo.Start
 
-	mockedClock.Add(time.Second)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(time.Second)
 	data := <-toClientsCh
 	// текущая секунда еще не заполнена, предыдущих нет - статистика должна быть пустой
 	require.Len(t, data.Points, 0)
 
-	mockedClock.Add(time.Second)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(time.Second)
 	data = <-toClientsCh
 	require.Len(t, data.Points, 1)
 	for _, point := range data.Points {
@@ -167,7 +163,8 @@ func TestCollectorTick(t *testing.T) {
 	// нет клиентов
 	toCollectorCh <- symo.Stop
 
-	mockedClock.Add(time.Second)
+	time.Sleep(time.Second)
+
 	select {
 	case <-time.After(100 * time.Millisecond):
 	case <-toClientsCh:
@@ -223,23 +220,20 @@ func TestCollectorTickWithErrors(t *testing.T) {
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
-	mockedClock := clock.NewMock()
-	collectorService := NewCollector(log, config, mockedClock)
+	collectorService := NewCollector(log, config)
 	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
 
 	time.Sleep(50 * time.Millisecond)
 
 	toCollectorCh <- symo.Start
 
-	mockedClock.Add(time.Second)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(time.Second)
 	data := <-toClientsCh
 	// текущая секунда еще не заполнена, предыдущих нет - статистика должна быть пустой
 	require.Len(t, data.Points, 0)
 
 	// все коллекторы вернули ошибки, данные должны быть пустые
-	mockedClock.Add(time.Second)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(time.Second)
 	data = <-toClientsCh
 	require.Len(t, data.Points, 1)
 	for _, point := range data.Points {
