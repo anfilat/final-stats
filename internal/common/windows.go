@@ -8,7 +8,9 @@ var (
 	kernel32 = windows.NewLazySystemDLL("kernel32.dll")
 	pdhDll   = windows.NewLazySystemDLL("pdh.dll")
 
-	GetSystemTimes = kernel32.NewProc("GetSystemTimes")
+	GetSystemTimes       = kernel32.NewProc("GetSystemTimes")
+	GetVolumeInformation = kernel32.NewProc("GetVolumeInformationW")
+	GetDiskFreeSpaceExW  = kernel32.NewProc("GetDiskFreeSpaceExW")
 
 	PdhOpenQuery                = pdhDll.NewProc("PdhOpenQuery")
 	PdhAddCounter               = pdhDll.NewProc("PdhAddEnglishCounterW")
