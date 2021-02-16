@@ -17,7 +17,7 @@ version: build
 
 .PHONY: test
 test:
-	go test -v -count=1 -race -timeout=30s ./...
+	go test -count=20 -race ./...
 
 install-lint-deps:
 	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.35.0
