@@ -20,7 +20,7 @@ type grpcClient struct {
 	dead  bool             // контекст клиента закрыт, нужно удалить этого клиента из списка
 }
 
-func newClient(cl symo.ClientData) *grpcClient {
+func newClient(cl symo.ClientData, now time.Time) *grpcClient {
 	ch := make(chan *symo.Stats, MaxQueueLen)
 	client := &grpcClient{
 		n:    cl.N,
@@ -28,7 +28,6 @@ func newClient(cl symo.ClientData) *grpcClient {
 		ch:   ch,
 		dead: false,
 	}
-	now := time.Now().Truncate(time.Second)
 	client.after = now.Add(time.Duration(client.m-1) * time.Second)
 	return client
 }

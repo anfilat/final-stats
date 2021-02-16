@@ -8,6 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/benbjohnson/clock"
+
 	"github.com/anfilat/final-stats/internal/clients"
 	"github.com/anfilat/final-stats/internal/collector"
 	"github.com/anfilat/final-stats/internal/cpu"
@@ -62,7 +64,7 @@ func main() {
 	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
-	clientsService := clients.NewClients(logg)
+	clientsService := clients.NewClients(logg, clock.New())
 	clientsService.Start(mainCtx, toCollectorCh, toClientsCh)
 	stopper.add(clientsService.Stop)
 

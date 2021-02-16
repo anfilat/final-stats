@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/benbjohnson/clock"
+
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
@@ -17,11 +19,13 @@ type clients struct {
 	toCollectorCh chan<- symo.CollectorCommand
 	toClientsCh   <-chan symo.MetricsData
 	log           symo.Logger
+	clock         clock.Clock
 }
 
-func NewClients(log symo.Logger) symo.Clients {
+func NewClients(log symo.Logger, clock clock.Clock) symo.Clients {
 	return &clients{
-		log: log,
+		log:   log,
+		clock: clock,
 	}
 }
 
@@ -94,7 +98,8 @@ func (c *clients) NewClient(cl symo.ClientData) (<-chan *symo.Stats, func(), err
 	default:
 	}
 
-	client := newClient(cl)
+	now := c.clock.Now().Truncate(time.Second)
+	client := newClient(cl, now)
 
 	c.clients = append(c.clients, client)
 

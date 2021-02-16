@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/benbjohnson/clock"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -23,7 +24,7 @@ func TestClientsStartStop(t *testing.T) {
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
-	clientsService := NewClients(log)
+	clientsService := NewClients(log, clock.NewMock())
 	clientsService.Start(startCtx, toCollectorCh, toClientsCh)
 
 	stopCtx := context.Background()
@@ -44,7 +45,7 @@ func TestClientsStartWithCanceledContext(t *testing.T) {
 
 	startCtx, cancel := context.WithCancel(context.Background())
 	cancel()
-	clientsService := NewClients(log)
+	clientsService := NewClients(log, clock.NewMock())
 	clientsService.Start(startCtx, toCollectorCh, toClientsCh)
 
 	stopCtx := context.Background()
@@ -63,7 +64,7 @@ func TestCommandsToCollector(t *testing.T) {
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
-	clientsService := NewClients(log)
+	clientsService := NewClients(log, clock.NewMock())
 	clientsService.Start(startCtx, toCollectorCh, toClientsCh)
 
 	// при добавлении первого клиента коллектору отправляется сообщение о том, что есть кому отправлять метрики
@@ -107,7 +108,7 @@ func TestClosingChannelsOnClose(t *testing.T) {
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
-	clientsService := NewClients(log)
+	clientsService := NewClients(log, clock.NewMock())
 	clientsService.Start(startCtx, toCollectorCh, toClientsCh)
 
 	ch1, _, err := clientsService.NewClient(symo.ClientData{N: 1, M: 1})
@@ -139,7 +140,7 @@ func TestFailNewClientAfterClose(t *testing.T) {
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
-	clientsService := NewClients(log)
+	clientsService := NewClients(log, clock.NewMock())
 	clientsService.Start(startCtx, toCollectorCh, toClientsCh)
 
 	stopCtx := context.Background()
@@ -253,8 +254,13 @@ func TestSend(t *testing.T) {
 			toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 			startCtx := context.Background()
-			clientsService := NewClients(log)
+			mockedClock := clock.NewMock()
+			clientsService := NewClients(log, mockedClock)
 			clientsService.Start(startCtx, toCollectorCh, toClientsCh)
+			defer func() {
+				stopCtx := context.Background()
+				clientsService.Stop(stopCtx)
+			}()
 
 			type grpcClient struct {
 				ch  <-chan *symo.Stats
@@ -282,12 +288,13 @@ func TestSend(t *testing.T) {
 				}
 
 				// секундный тик
+				now := mockedClock.Now()
 				toClientsCh <- symo.MetricsData{
-					Time:   time.Now().Truncate(time.Second),
+					Time:   now.Truncate(time.Second),
 					Points: nil,
 				}
 
-				time.Sleep(500 * time.Millisecond)
+				time.Sleep(100 * time.Millisecond)
 
 				// проверка клиентских каналов
 				for i, grpc := range tt.grpcs {
@@ -302,11 +309,8 @@ func TestSend(t *testing.T) {
 					}
 				}
 
-				time.Sleep(500 * time.Millisecond)
+				mockedClock.Add(time.Second)
 			}
-
-			stopCtx := context.Background()
-			clientsService.Stop(stopCtx)
 		})
 	}
 }
