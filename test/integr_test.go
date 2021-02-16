@@ -52,7 +52,7 @@ func TestSymo(t *testing.T) {
 func compile() error {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("./build.bat")
+		cmd = exec.Command(`.\build.bat`)
 	} else {
 		cmd = exec.Command("make", "build")
 	}
