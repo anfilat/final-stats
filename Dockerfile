@@ -8,6 +8,8 @@ RUN go build -o /app/symo /app/cmd/symo/
 
 FROM alpine:latest
 
+RUN apk add --no-cache coreutils && apk add --no-cache sysstat
+
 WORKDIR /root/
 COPY --from=builder /app/symo .
 EXPOSE 8000
