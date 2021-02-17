@@ -30,6 +30,7 @@ type timePoint struct {
 	point *symo.Point // структура, в которую складываются метрики
 }
 
+// NewCollector возвращает сервис сбора метрик.
 func NewCollector(log symo.Logger, config symo.Config) symo.Collector {
 	return &collector{
 		config: config,

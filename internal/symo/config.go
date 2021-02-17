@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// NewConfig возвращает текущую конфигурацию.
 func NewConfig(configFile string) (Config, error) {
 	config := Config{}
 
@@ -47,6 +48,7 @@ func configure(v *viper.Viper) {
 	v.SetDefault("metric.usedfs", true)
 }
 
+// Config содержит конфигурацию программы.
 type Config struct {
 	App    AppConf
 	Log    LoggerConf
@@ -65,6 +67,7 @@ func (c Config) Validate() error {
 	return nil
 }
 
+// AppConf содержит общие настройки программы.
 type AppConf struct {
 	MaxSeconds int
 }
@@ -77,10 +80,12 @@ func (c AppConf) Validate() error {
 	return nil
 }
 
+// LoggerConf содержит настройки логгера.
 type LoggerConf struct {
 	Level string
 }
 
+// ServerConf содержит настройки gRPC сервера.
 type ServerConf struct {
 	Port string
 }
@@ -93,6 +98,7 @@ func (c ServerConf) Validate() error {
 	return nil
 }
 
+// MetricConf позволяет отключить сбор каких-либо метрик.
 type MetricConf struct {
 	Loadavg   bool
 	CPU       bool

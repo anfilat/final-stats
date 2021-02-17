@@ -8,6 +8,7 @@ import (
 
 const procPath = "/proc"
 
+// ReadProcFile считывает указанный файл из /proc/ и возвращает его как набор строк.
 func ReadProcFile(name string) ([]string, error) {
 	content, err := ioutil.ReadFile(procFileName(name))
 	if err != nil {
@@ -17,6 +18,7 @@ func ReadProcFile(name string) ([]string, error) {
 	return SplitLines(string(content)), nil
 }
 
+// SplitLines разбивает полученный текст на слайс строк.
 func SplitLines(content string) []string {
 	return strings.Split(strings.TrimSpace(content), "\n")
 }

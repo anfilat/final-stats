@@ -21,6 +21,7 @@ type clients struct {
 	clock       clock.Clock
 }
 
+// NewClients возвращает сервис клиентов.
 func NewClients(log symo.Logger, clock clock.Clock) symo.Clients {
 	return &clients{
 		log:   log,

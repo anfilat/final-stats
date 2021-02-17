@@ -18,7 +18,7 @@ type NewClienter interface {
 	NewClient(ClientData) (<-chan *Stats, func(), error)
 }
 
-// сервис, хранящий всех подключенных клиентов и отсылающий им статистику.
+// Clients представляет сервис, хранящий всех подключенных клиентов и отсылающий им статистику.
 type Clients interface {
 	Start(context.Context, <-chan MetricsData)
 	Stop(context.Context)
@@ -28,17 +28,18 @@ type Clients interface {
 // ErrStopped ошибка, возвращаемая grpc запросу, если приложение останавливается.
 var ErrStopped = errors.New("service is stopped")
 
-// канал для посекундной передачи накопленных данных сервису клиентов.
+// CollectorToClientsCh - канал для посекундной передачи накопленных данных сервису клиентов.
 type CollectorToClientsCh chan MetricsData
 
-// сервису клиентов отсылается текущая секунда и копия всех собранных данных.
+// MetricsData содержит данные, отсылаемые сервису клиентов.
+// Отсылается текущая секунда и копия всех собранных данных.
 // Отсылается копия, чтобы сервис мог ее обрабатывать, не блокируя мьютекс с собираемыми данными.
 type MetricsData struct {
 	Time   time.Time
 	Points Points
 }
 
-// данные для клиента.
+// Stats содержит данные, отсылаемые каждому клиенту.
 type Stats struct {
 	Time      time.Time
 	LoadAvg   *LoadAvgData
@@ -47,10 +48,10 @@ type Stats struct {
 	UsedFS    UsedFSData
 }
 
-// хранилище собранных посекундных наборов метрик.
+// Points хранит собранные посекундные наборы метрик.
 type Points map[time.Time]*Point
 
-// набор метрик (снапшот). За секунду или усредненный.
+// Point содержит набор метрик (снапшот). За секунду или усредненный.
 type Point struct {
 	LoadAvg   *LoadAvgData
 	CPU       *CPUData
@@ -58,6 +59,7 @@ type Point struct {
 	UsedFS    UsedFSData
 }
 
+// MetricCommand - команды для взаимодействия сервиса метрик и коллекторами, собирающими метрики.
 type MetricCommand int
 
 const (
@@ -66,7 +68,7 @@ const (
 	GetMetric
 )
 
-// набор функций, возвращающих свои метрики. Передается сервису Collector при его создании.
+// MetricCollectors - набор функций, возвращающих свои метрики. Передается сервису Collector при его создании.
 type MetricCollectors struct {
 	LoadAvg   LoadAvg
 	CPU       CPU
@@ -74,32 +76,33 @@ type MetricCollectors struct {
 	UsedFS    UsedFS
 }
 
-// функция возвращающая среднюю загрузку системы.
+// LoadAvg - функция возвращающая среднюю загрузку системы.
 type LoadAvg func(ctx context.Context) (*LoadAvgData, error)
 
-// средняя загрузка системы.
+// LoadAvgData содержит метрики средней загрузки системы.
 type LoadAvgData struct {
 	Load1  float64
 	Load5  float64
 	Load15 float64
 }
 
-// функция возвращающая среднюю загрузку cpu.
+// CPU - функция возвращающая среднюю загрузку cpu.
 type CPU func(ctx context.Context, action MetricCommand) (*CPUData, error)
 
-// средняя загрузка cpu. В процентах.
+// CPUData содержит метрики средней загрузки cpu. В процентах.
 type CPUData struct {
 	User   float64
 	System float64
 	Idle   float64
 }
 
-// функция возвращающая загрузку дисков.
+// LoadDisks - функция возвращающая загрузку дисков.
 type LoadDisks func(ctx context.Context, action MetricCommand) (LoadDisksData, error)
 
+// LoadDisksData - слайс информации о загрузке дисков.
 type LoadDisksData []DiskData
 
-// загрузка дисков.
+// DiskData содержит метрики загрузки дисков.
 type DiskData struct {
 	Name    string
 	Tps     float64
@@ -107,24 +110,26 @@ type DiskData struct {
 	KBWrite float64
 }
 
-// функция возвращающая использование файловых систем.
+// UsedFS - функция возвращающая использование файловых систем.
 type UsedFS func(ctx context.Context, action MetricCommand) (UsedFSData, error)
 
+// UsedFSData - слайс информации об использовании файловых систем.
 type UsedFSData []FSData
 
-// использовано в каждой файловой системе.
+// FSData содержит информацию об использовании файловой системы.
 type FSData struct {
 	Path      string
 	UsedSpace float64
 	UsedInode float64
 }
 
+// GRPCServer представляет gRPC сервер.
 type GRPCServer interface {
 	Start(addr string, clients NewClienter) error
 	Stop(ctx context.Context)
 }
 
-// информация, передаваемая из grpc запроса сервису клиентов.
+// ClientData - информация, передаваемая из grpc запроса сервису клиентов.
 type ClientData struct {
 	N int // информация отправляется каждые N секунд
 	M int // информация усредняется за M секунд

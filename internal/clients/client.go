@@ -6,7 +6,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-// длина очереди на отправку данных клиенту. На случай временного замедления сети.
+// MaxQueueLen - длина очереди на отправку данных клиенту. На случай временного замедления сети.
 const MaxQueueLen = 100
 
 type clientsList []*grpcClient

@@ -10,7 +10,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-type Service struct {
+type service struct {
 	UnimplementedSymoServer
 
 	clients symo.NewClienter
@@ -18,23 +18,30 @@ type Service struct {
 	log     symo.Logger
 }
 
-func newService(log symo.Logger, config symo.Config, clients symo.NewClienter) *Service {
-	return &Service{
+func newService(log symo.Logger, config symo.Config, clients symo.NewClienter) *service {
+	return &service{
 		clients: clients,
 		config:  config,
 		log:     log,
 	}
 }
 
-func (s *Service) GetStats(req *StatsRequest, srv Symo_GetStatsServer) error {
+// GetStats реализует обработку клиентского запроса на получение статистики.
+func (s *service) GetStats(req *StatsRequest, srv Symo_GetStatsServer) error {
 	s.log.Debug("new client. Every ", req.N, " for ", req.M)
 
 	n := int(req.N)
 	m := int(req.M)
 
 	MaxSeconds := s.config.App.MaxSeconds
+	if n <= 0 {
+		return status.Error(codes.InvalidArgument, "N must be greater than 0 seconds")
+	}
 	if n > MaxSeconds {
 		return status.Error(codes.InvalidArgument, fmt.Sprintf("N must be less than %v seconds", MaxSeconds))
+	}
+	if m <= 0 {
+		return status.Error(codes.InvalidArgument, "M must be greater than 0 seconds")
 	}
 	if m > MaxSeconds {
 		return status.Error(codes.InvalidArgument, fmt.Sprintf("M must be less than %v seconds", MaxSeconds))
