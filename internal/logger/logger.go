@@ -8,6 +8,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
+// New возвращает настроенный логгер.
 func New(logLevel string) (symo.Logger, error) {
 	log := logrus.New()
 

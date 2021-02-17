@@ -12,6 +12,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
+// Collect позволяет управлять получением метрик средней загрузки системы.
 func Collect(_ context.Context) (*symo.LoadAvgData, error) {
 	content, err := common.ReadProcFile("loadavg")
 	if err != nil {

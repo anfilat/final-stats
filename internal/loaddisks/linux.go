@@ -24,6 +24,7 @@ var (
 	loadDiskData symo.LoadDisksData
 )
 
+// Collect позволяет управлять получением метрик загрузки дисков.
 func Collect(ctx context.Context, action symo.MetricCommand) (symo.LoadDisksData, error) {
 	switch action {
 	case symo.StartMetric:

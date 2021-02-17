@@ -1,4 +1,5 @@
 //go:generate protoc -I "/usr/local/include/" --proto_path=. --go_out=. --go-grpc_out=. ./symo.proto
+
 package grpc
 
 import (
@@ -16,6 +17,7 @@ type grpcServer struct {
 	log    symo.Logger
 }
 
+// NewServer возвращает gRPC сервер.
 func NewServer(log symo.Logger, config symo.Config) symo.GRPCServer {
 	return &grpcServer{
 		config: config,

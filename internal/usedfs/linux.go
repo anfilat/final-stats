@@ -24,6 +24,7 @@ var (
 	fsData     symo.UsedFSData
 )
 
+// Collect позволяет управлять получением информации об использовании файловых систем.
 func Collect(ctx context.Context, action symo.MetricCommand) (symo.UsedFSData, error) {
 	switch action {
 	case symo.StartMetric:

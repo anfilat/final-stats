@@ -19,6 +19,7 @@ var (
 	prevData *cpuData
 )
 
+// Collect позволяет управлять получением метрик средней загрузки CPU.
 func Collect(_ context.Context, action symo.MetricCommand) (*symo.CPUData, error) {
 	switch action {
 	case symo.StartMetric:

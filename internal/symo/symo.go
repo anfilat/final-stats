@@ -6,14 +6,15 @@ import (
 	"time"
 )
 
-// сервис, запускающий каждую секунду сбор статистики и ее отправку клиентам.
+// Collector представляет сервис, запускающий каждую секунду сбор статистики и ее отправку клиентам.
 type Collector interface {
 	Start(context.Context, MetricCollectors, chan<- MetricsData)
 	Stop(context.Context)
 }
 
+// NewClienter представляет интерфейс для подключения новых клиентов.
 type NewClienter interface {
-	// канал для получения отсылаемых данных и ф-ия отключения клиента
+	// возвращает канал для получения отсылаемых данных и ф-ия отключения клиента
 	NewClient(ClientData) (<-chan *Stats, func(), error)
 }
 
