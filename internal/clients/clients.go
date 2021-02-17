@@ -11,15 +11,14 @@ import (
 )
 
 type clients struct {
-	ctx           context.Context // управление остановкой сервиса
-	ctxCancel     context.CancelFunc
-	closedCh      chan interface{}
-	mutex         *sync.Mutex
-	clients       clientsList // список клиентов
-	toCollectorCh chan<- symo.CollectorCommand
-	toClientsCh   <-chan symo.MetricsData
-	log           symo.Logger
-	clock         clock.Clock
+	ctx         context.Context // управление остановкой сервиса
+	ctxCancel   context.CancelFunc
+	closedCh    chan interface{}
+	mutex       *sync.Mutex
+	clients     clientsList // список клиентов
+	toClientsCh <-chan symo.MetricsData
+	log         symo.Logger
+	clock       clock.Clock
 }
 
 func NewClients(log symo.Logger, clock clock.Clock) symo.Clients {
@@ -29,8 +28,7 @@ func NewClients(log symo.Logger, clock clock.Clock) symo.Clients {
 	}
 }
 
-func (c *clients) Start(_ context.Context, toCollectorCh chan<- symo.CollectorCommand, toClientsCh <-chan symo.MetricsData) {
-	c.toCollectorCh = toCollectorCh
+func (c *clients) Start(_ context.Context, toClientsCh <-chan symo.MetricsData) {
 	c.toClientsCh = toClientsCh
 
 	c.ctx, c.ctxCancel = context.WithCancel(context.Background())
@@ -103,13 +101,6 @@ func (c *clients) NewClient(cl symo.ClientData) (<-chan *symo.Stats, func(), err
 
 	c.clients = append(c.clients, client)
 
-	if len(c.clients) == 1 {
-		select {
-		case c.toCollectorCh <- symo.Start:
-		default:
-		}
-	}
-
 	delClient := func() {
 		c.mutex.Lock()
 		defer c.mutex.Unlock()
@@ -121,9 +112,15 @@ func (c *clients) NewClient(cl symo.ClientData) (<-chan *symo.Stats, func(), err
 }
 
 func (c *clients) sendStat(data *symo.MetricsData) {
-	from := time.Now()
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
+	if len(c.clients) == 0 {
+		return
+	}
+
+	from := time.Now()
+	defer c.log.Debug("stats sent in ", time.Since(from))
 
 	now := data.Time
 	results := make(map[int]*symo.Stats)
@@ -153,12 +150,4 @@ func (c *clients) sendStat(data *symo.MetricsData) {
 		}
 	}
 	c.clients = clients
-
-	if len(c.clients) == 0 {
-		select {
-		case c.toCollectorCh <- symo.Stop:
-		default:
-		}
-	}
-	c.log.Debug("stats sent in ", time.Since(from))
 }

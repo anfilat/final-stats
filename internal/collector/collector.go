@@ -12,18 +12,16 @@ import (
 const timeToGetMetric = 950 * time.Millisecond
 
 type collector struct {
-	ctx           context.Context // управление остановкой сервиса
-	ctxCancel     context.CancelFunc
-	stoppedCh     chan interface{}
-	mutex         *sync.Mutex
-	points        symo.Points        // собираемые данные
-	workerChans   []chan<- timePoint // каналы горутин, ответственных за сбор конкретных метрик
-	isClients     bool               // нужно ли отправлять собранную статистику
-	config        symo.Config
-	collectors    symo.MetricCollectors // функции возвращающие конкретные метрики
-	toCollectorCh <-chan symo.CollectorCommand
-	toClientsCh   chan<- symo.MetricsData
-	log           symo.Logger
+	ctx         context.Context // управление остановкой сервиса
+	ctxCancel   context.CancelFunc
+	stoppedCh   chan interface{}
+	mutex       *sync.Mutex
+	points      symo.Points        // собираемые данные
+	workerChans []chan<- timePoint // каналы горутин, ответственных за сбор конкретных метрик
+	config      symo.Config
+	collectors  symo.MetricCollectors // функции возвращающие конкретные метрики
+	toClientsCh chan<- symo.MetricsData
+	log         symo.Logger
 }
 
 // информация, отправляемая горутинам, ответственным за сбор конкретных метрик.
@@ -39,10 +37,8 @@ func NewCollector(log symo.Logger, config symo.Config) symo.Collector {
 	}
 }
 
-func (c *collector) Start(ctx context.Context, collectors symo.MetricCollectors,
-	toCollectorCh <-chan symo.CollectorCommand, toClientsCh chan<- symo.MetricsData) {
+func (c *collector) Start(ctx context.Context, collectors symo.MetricCollectors, toClientsCh chan<- symo.MetricsData) {
 	c.collectors = collectors
-	c.toCollectorCh = toCollectorCh
 	c.toClientsCh = toClientsCh
 
 	c.ctx, c.ctxCancel = context.WithCancel(context.Background())
@@ -50,7 +46,6 @@ func (c *collector) Start(ctx context.Context, collectors symo.MetricCollectors,
 	c.mutex = &sync.Mutex{}
 	c.points = make(symo.Points)
 	c.workerChans = nil
-	c.isClients = false
 
 	mountedCh := make(chan interface{})
 	go c.mountMetrics(ctx, mountedCh)
@@ -198,12 +193,6 @@ func (c *collector) work() {
 		select {
 		case <-c.ctx.Done():
 			return
-		case mess := <-c.toCollectorCh:
-			if mess == symo.Start {
-				c.isClients = true
-			} else if mess == symo.Stop {
-				c.isClients = false
-			}
 		case now := <-ticker.C:
 			c.processTick(now.Truncate(time.Second))
 		}
@@ -230,11 +219,6 @@ func (c *collector) processTick(now time.Time) {
 
 	// устаревшие точки удаляются
 	c.cleanPoints(now)
-
-	if !c.isClients {
-		return
-	}
-	// накопленная статистика отправляются клиентам
 
 	data := symo.MetricsData{
 		Time:   now,

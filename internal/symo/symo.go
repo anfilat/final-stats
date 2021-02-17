@@ -8,7 +8,7 @@ import (
 
 // сервис, запускающий каждую секунду сбор статистики и ее отправку клиентам.
 type Collector interface {
-	Start(context.Context, MetricCollectors, <-chan CollectorCommand, chan<- MetricsData)
+	Start(context.Context, MetricCollectors, chan<- MetricsData)
 	Stop(context.Context)
 }
 
@@ -19,23 +19,13 @@ type NewClienter interface {
 
 // сервис, хранящий всех подключенных клиентов и отсылающий им статистику.
 type Clients interface {
-	Start(context.Context, chan<- CollectorCommand, <-chan MetricsData)
+	Start(context.Context, <-chan MetricsData)
 	Stop(context.Context)
 	NewClienter
 }
 
 // ErrStopped ошибка, возвращаемая grpc запросу, если приложение останавливается.
 var ErrStopped = errors.New("service is stopped")
-
-// канал для управления сервисом Collector из сервиса Clients. Если клиентов нет, статистику собирать не нужно.
-type ClientsToCollectorCh chan CollectorCommand
-
-type CollectorCommand int
-
-const (
-	Start CollectorCommand = iota
-	Stop
-)
 
 // канал для посекундной передачи накопленных данных сервису клиентов.
 type CollectorToClientsCh chan MetricsData

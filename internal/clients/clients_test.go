@@ -20,18 +20,16 @@ func TestClientsStartStop(t *testing.T) {
 	log := new(mocks.Logger)
 	log.On("Debug", "clients is stopped")
 
-	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
 	clientsService := NewClients(log, clock.NewMock())
-	clientsService.Start(startCtx, toCollectorCh, toClientsCh)
+	clientsService.Start(startCtx, toClientsCh)
 
 	stopCtx := context.Background()
 	clientsService.Stop(stopCtx)
 
 	log.AssertExpectations(t)
-	require.Len(t, toCollectorCh, 0)
 }
 
 func TestClientsStartWithCanceledContext(t *testing.T) {
@@ -40,59 +38,12 @@ func TestClientsStartWithCanceledContext(t *testing.T) {
 	log := new(mocks.Logger)
 	log.On("Debug", "clients is stopped")
 
-	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx, cancel := context.WithCancel(context.Background())
 	cancel()
 	clientsService := NewClients(log, clock.NewMock())
-	clientsService.Start(startCtx, toCollectorCh, toClientsCh)
-
-	stopCtx := context.Background()
-	clientsService.Stop(stopCtx)
-
-	log.AssertExpectations(t)
-	require.Len(t, toCollectorCh, 0)
-}
-
-func TestCommandsToCollector(t *testing.T) {
-	log := new(mocks.Logger)
-	log.On("Debug", "clients is stopped")
-	log.On("Debug", "stats sent in ", mock.Anything)
-
-	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
-	toClientsCh := make(symo.CollectorToClientsCh, 1)
-
-	startCtx := context.Background()
-	clientsService := NewClients(log, clock.NewMock())
-	clientsService.Start(startCtx, toCollectorCh, toClientsCh)
-
-	// при добавлении первого клиента коллектору отправляется сообщение о том, что есть кому отправлять метрики
-	_, del1, err := clientsService.NewClient(symo.ClientData{N: 1, M: 1})
-	require.NoError(t, err)
-	cmd := <-toCollectorCh
-	require.Equal(t, symo.Start, cmd)
-
-	// при добавлении дополнительных клиентов коллектору ничего не отправляется
-	_, del2, err := clientsService.NewClient(symo.ClientData{N: 1, M: 1})
-	require.NoError(t, err)
-	require.Len(t, toCollectorCh, 0)
-
-	// при удалении всех клиентов коллектору отправляется сообщение о том, что метрики отправлять не надо
-	del1()
-	del2()
-	toClientsCh <- symo.MetricsData{
-		Time:   time.Now(),
-		Points: nil,
-	}
-	cmd = <-toCollectorCh
-	require.Equal(t, symo.Stop, cmd)
-
-	// если снова появляется клиент, то все повторяется
-	_, _, err = clientsService.NewClient(symo.ClientData{N: 1, M: 1})
-	require.NoError(t, err)
-	cmd = <-toCollectorCh
-	require.Equal(t, symo.Start, cmd)
+	clientsService.Start(startCtx, toClientsCh)
 
 	stopCtx := context.Background()
 	clientsService.Stop(stopCtx)
@@ -104,12 +55,11 @@ func TestClosingChannelsOnClose(t *testing.T) {
 	log := new(mocks.Logger)
 	log.On("Debug", "clients is stopped")
 
-	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
 	clientsService := NewClients(log, clock.NewMock())
-	clientsService.Start(startCtx, toCollectorCh, toClientsCh)
+	clientsService.Start(startCtx, toClientsCh)
 
 	ch1, _, err := clientsService.NewClient(symo.ClientData{N: 1, M: 1})
 	require.NoError(t, err)
@@ -136,12 +86,11 @@ func TestFailNewClientAfterClose(t *testing.T) {
 	log := new(mocks.Logger)
 	log.On("Debug", "clients is stopped")
 
-	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
 	clientsService := NewClients(log, clock.NewMock())
-	clientsService.Start(startCtx, toCollectorCh, toClientsCh)
+	clientsService.Start(startCtx, toClientsCh)
 
 	stopCtx := context.Background()
 	clientsService.Stop(stopCtx)
@@ -250,13 +199,12 @@ func TestSend(t *testing.T) {
 			log := new(mocks.Logger)
 			log.On("Debug", mock.Anything)
 			log.On("Debug", mock.Anything, mock.Anything)
-			toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 			toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 			startCtx := context.Background()
 			mockedClock := clock.NewMock()
 			clientsService := NewClients(log, mockedClock)
-			clientsService.Start(startCtx, toCollectorCh, toClientsCh)
+			clientsService.Start(startCtx, toClientsCh)
 			defer func() {
 				stopCtx := context.Background()
 				clientsService.Stop(stopCtx)

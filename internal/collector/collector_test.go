@@ -34,12 +34,11 @@ func TestCollectorStartStop(t *testing.T) {
 		UsedFS:    usedfs.Collect,
 	}
 
-	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
 	collectorService := NewCollector(log, config)
-	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
+	collectorService.Start(startCtx, collectors, toClientsCh)
 
 	stopCtx := context.Background()
 	collectorService.Stop(stopCtx)
@@ -64,13 +63,12 @@ func TestCollectorStartWithCanceledContext(t *testing.T) {
 		UsedFS:    usedfs.Collect,
 	}
 
-	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx, cancel := context.WithCancel(context.Background())
 	cancel()
 	collectorService := NewCollector(log, config)
-	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
+	collectorService.Start(startCtx, collectors, toClientsCh)
 
 	stopCtx := context.Background()
 	collectorService.Stop(stopCtx)
@@ -133,17 +131,13 @@ func TestCollectorTick(t *testing.T) {
 		UsedFS:    UsedFS.Execute,
 	}
 
-	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
 	collectorService := NewCollector(log, config)
-	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
+	collectorService.Start(startCtx, collectors, toClientsCh)
 
 	time.Sleep(50 * time.Millisecond)
-
-	// есть клиенты
-	toCollectorCh <- symo.Start
 
 	time.Sleep(time.Second)
 	data := <-toClientsCh
@@ -158,17 +152,6 @@ func TestCollectorTick(t *testing.T) {
 		require.Equal(t, cpuData, point.CPU)
 		require.Equal(t, ldData, point.LoadDisks)
 		require.Equal(t, fsData, point.UsedFS)
-	}
-
-	// нет клиентов
-	toCollectorCh <- symo.Stop
-
-	time.Sleep(time.Second)
-
-	select {
-	case <-time.After(100 * time.Millisecond):
-	case <-toClientsCh:
-		require.Fail(t, "unexpected data in toClients channel")
 	}
 
 	stopCtx := context.Background()
@@ -216,16 +199,13 @@ func TestCollectorTickWithErrors(t *testing.T) {
 		UsedFS:    UsedFS.Execute,
 	}
 
-	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	startCtx := context.Background()
 	collectorService := NewCollector(log, config)
-	collectorService.Start(startCtx, collectors, toCollectorCh, toClientsCh)
+	collectorService.Start(startCtx, collectors, toClientsCh)
 
 	time.Sleep(50 * time.Millisecond)
-
-	toCollectorCh <- symo.Start
 
 	time.Sleep(time.Second)
 	data := <-toClientsCh

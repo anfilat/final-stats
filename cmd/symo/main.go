@@ -61,15 +61,14 @@ func main() {
 		UsedFS:    usedfs.Collect,
 	}
 
-	toCollectorCh := make(symo.ClientsToCollectorCh, 1)
 	toClientsCh := make(symo.CollectorToClientsCh, 1)
 
 	clientsService := clients.NewClients(logg, clock.New())
-	clientsService.Start(mainCtx, toCollectorCh, toClientsCh)
+	clientsService.Start(mainCtx, toClientsCh)
 	stopper.add(clientsService.Stop)
 
 	collectorService := collector.NewCollector(logg, config)
-	collectorService.Start(mainCtx, collectors, toCollectorCh, toClientsCh)
+	collectorService.Start(mainCtx, collectors, toClientsCh)
 	stopper.add(collectorService.Stop)
 
 	grpcServer := grpc.NewServer(logg, config)
