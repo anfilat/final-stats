@@ -43,3 +43,13 @@ build-load:
 .PHONY: test-load
 test-load: build-load build-pprof
 	$(LOAD_BIN)
+
+CLIENT_BIN := "./bin/client"
+
+.PHONY: build-client
+build-client:
+	go build -v -o $(CLIENT_BIN) ./cmd/client
+
+.PHONY: run-client
+run-client: build-client
+	$(CLIENT_BIN)

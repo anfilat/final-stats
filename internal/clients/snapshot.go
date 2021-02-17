@@ -44,7 +44,7 @@ func fillLoadAvg(result *symo.Stats, points []*symo.Point) {
 		}
 	}
 
-	if countLoad > 1 {
+	if countLoad > 0 {
 		result.LoadAvg = &symo.LoadAvgData{
 			Load1:  load1 / float64(countLoad),
 			Load5:  load5 / float64(countLoad),
@@ -68,7 +68,7 @@ func fillCPU(result *symo.Stats, points []*symo.Point) {
 		}
 	}
 
-	if countCPU > 1 {
+	if countCPU > 0 {
 		result.CPU = &symo.CPUData{
 			User:   cpuUser / float64(countCPU),
 			System: cpuSystem / float64(countCPU),

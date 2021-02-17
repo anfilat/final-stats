@@ -207,6 +207,34 @@ func TestSnapshot(t *testing.T) {
 			},
 		},
 		{
+			name: "for 1 second",
+			data: &symo.MetricsData{
+				Time: now,
+				Points: symo.Points{
+					now.Add(-time.Second): {
+						LoadAvg:   &la1,
+						CPU:       &cpu1,
+						LoadDisks: ld1,
+						UsedFS:    fs1,
+					},
+					now.Add(-2 * time.Second): {
+						LoadAvg:   &la2,
+						CPU:       &cpu2,
+						LoadDisks: ld2,
+						UsedFS:    fs2,
+					},
+				},
+			},
+			m: 1,
+			expected: &symo.Stats{
+				Time:      now,
+				LoadAvg:   &la1,
+				CPU:       &cpu1,
+				LoadDisks: ld1,
+				UsedFS:    fs1,
+			},
+		},
+		{
 			name: "with old points",
 			data: &symo.MetricsData{
 				Time: now,
