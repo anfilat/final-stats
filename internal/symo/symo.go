@@ -63,8 +63,11 @@ type Point struct {
 type MetricCommand int
 
 const (
+	// StartMetric - начать собирать метрики.
 	StartMetric MetricCommand = iota
+	// StopMetric - остановить сбор метрик.
 	StopMetric
+	// GetMetric - получить метрики.
 	GetMetric
 )
 
@@ -135,6 +138,7 @@ type ClientData struct {
 	M int // информация усредняется за M секунд
 }
 
+// Logger представляет логгер.
 type Logger interface {
 	Debug(args ...interface{})
 	Info(args ...interface{})

@@ -109,7 +109,7 @@ func (c *collector) mountCPU(startCtx context.Context, wg *sync.WaitGroup) {
 
 	_, err := c.collectors.CPU(startCtx, symo.StartMetric)
 	if err != nil {
-		c.log.Debug(fmt.Errorf("cannot start cpu: %w", err))
+		c.log.Debug(fmt.Errorf("cannot start collect the cpu metric: %w", err))
 		return
 	}
 	go cpuCollect(c.ctx, c.mutex, c.newWorkerChan(), c.collectors.CPU, c.log)
@@ -120,7 +120,7 @@ func (c *collector) mountLoadDisks(startCtx context.Context, wg *sync.WaitGroup)
 
 	_, err := c.collectors.LoadDisks(startCtx, symo.StartMetric)
 	if err != nil {
-		c.log.Debug(fmt.Errorf("cannot start load disks: %w", err))
+		c.log.Debug(fmt.Errorf("cannot start collect the load disks metric: %w", err))
 	}
 	go loadDisksCollect(c.ctx, c.mutex, c.newWorkerChan(), c.collectors.LoadDisks, c.log)
 }
@@ -130,7 +130,7 @@ func (c *collector) mountUsedFS(startCtx context.Context, wg *sync.WaitGroup) {
 
 	_, err := c.collectors.UsedFS(startCtx, symo.StartMetric)
 	if err != nil {
-		c.log.Debug(fmt.Errorf("cannot start used fs: %w", err))
+		c.log.Debug(fmt.Errorf("cannot start collect the used fs metric: %w", err))
 	}
 	go usedFSCollect(c.ctx, c.mutex, c.newWorkerChan(), c.collectors.UsedFS, c.log)
 }

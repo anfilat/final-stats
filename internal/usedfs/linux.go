@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -36,18 +37,24 @@ func Collect(ctx context.Context, action symo.MetricCommand) (symo.UsedFSData, e
 	}
 }
 
+const dfCmdLine = `df --output="used,avail,itotal,iused,target" -x tmpfs -x squashfs`
+
 func start(ctx context.Context) error {
+	if err := testExtUtil(); err != nil {
+		return fmt.Errorf("df util can't be used: %w", err)
+	}
+
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	cancelableCtx, cancel := context.WithCancel(ctx)
 
-	cmdLine := `while true ; do df --output="used,avail,itotal,iused,target" -x tmpfs -x squashfs; echo ---; sleep 1 ; done`
+	cmdLine := `while true ; do ` + dfCmdLine + `; echo ---; sleep 1 ; done`
 	cmd := exec.CommandContext(cancelableCtx, "sh", "-c", cmdLine)
-	out, err := cmd.StdoutPipe()
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		cancel()
-		return fmt.Errorf("cannot get df pipe: %w", err)
+		return fmt.Errorf("cannot get stdout pipe: %w", err)
 	}
 
 	err = cmd.Start()
@@ -56,7 +63,7 @@ func start(ctx context.Context) error {
 		return fmt.Errorf("cannot start df command: %w", err)
 	}
 
-	go readOut(out)
+	go readOut(stdout)
 
 	isLive = true
 	command = cmd
@@ -87,6 +94,23 @@ func stop(ctx context.Context) error {
 	case <-stopped:
 		return nil
 	}
+}
+
+func testExtUtil() error {
+	cmd := exec.Command("sh", "-c", dfCmdLine)
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("cannot get stderr pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("cannot start df command: %w", err)
+	}
+	errText, _ := ioutil.ReadAll(stderr)
+	if len(errText) > 0 {
+		return fmt.Errorf("test of df returns error message: %s", errText)
+	}
+	_ = cmd.Wait()
+	return nil
 }
 
 func readOut(out io.Reader) {
