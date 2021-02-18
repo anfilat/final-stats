@@ -5,6 +5,7 @@ package grpc
 import (
 	"context"
 	"net"
+	"sync"
 
 	"google.golang.org/grpc"
 
@@ -12,6 +13,7 @@ import (
 )
 
 type grpcServer struct {
+	mutex  *sync.Mutex
 	srv    *grpc.Server
 	config symo.Config
 	log    symo.Logger
@@ -20,6 +22,7 @@ type grpcServer struct {
 // NewServer возвращает gRPC сервер.
 func NewServer(log symo.Logger, config symo.Config) symo.GRPCServer {
 	return &grpcServer{
+		mutex:  &sync.Mutex{},
 		config: config,
 		log:    log,
 	}
@@ -31,7 +34,10 @@ func (g *grpcServer) Start(addr string, clients symo.NewClienter) error {
 		return err
 	}
 
+	g.mutex.Lock()
 	g.srv = grpc.NewServer()
+	g.mutex.Unlock()
+
 	RegisterSymoServer(g.srv, newService(g.log, g.config, clients))
 
 	g.log.Debug("starting grpc server on ", addr)
@@ -41,6 +47,9 @@ func (g *grpcServer) Start(addr string, clients symo.NewClienter) error {
 func (g *grpcServer) Stop(ctx context.Context) {
 	stopped := make(chan interface{})
 	go func() {
+		g.mutex.Lock()
+		defer g.mutex.Unlock()
+
 		g.srv.GracefulStop()
 		close(stopped)
 	}()

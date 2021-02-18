@@ -8,6 +8,9 @@ import (
 	"github.com/spf13/viper"
 )
 
+// MaxSeconds - дефолтное время хранения метрик.
+const MaxSeconds = 600
+
 // NewConfig возвращает текущую конфигурацию.
 func NewConfig(configFile string) (Config, error) {
 	config := Config{}
@@ -39,7 +42,7 @@ func configure(v *viper.Viper) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 
-	v.SetDefault("app.maxSeconds", 600)
+	v.SetDefault("app.maxSeconds", MaxSeconds)
 	v.SetDefault("log.level", "INFO")
 	v.SetDefault("server.port", "8000")
 	v.SetDefault("metric.loadavg", true)

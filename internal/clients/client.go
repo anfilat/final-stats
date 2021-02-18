@@ -6,8 +6,7 @@ import (
 	"github.com/anfilat/final-stats/internal/symo"
 )
 
-// MaxQueueLen - длина очереди на отправку данных клиенту. На случай временного замедления сети.
-const MaxQueueLen = 100
+const maxQueueLen = 100
 
 type clientsList []*grpcClient
 
@@ -21,7 +20,7 @@ type grpcClient struct {
 }
 
 func newClient(cl symo.ClientData, now time.Time) *grpcClient {
-	ch := make(chan *symo.Stats, MaxQueueLen)
+	ch := make(chan *symo.Stats, maxQueueLen)
 	client := &grpcClient{
 		n:    cl.N,
 		m:    cl.M,
