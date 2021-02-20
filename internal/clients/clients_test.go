@@ -242,18 +242,24 @@ func TestSend(t *testing.T) {
 					Points: nil,
 				}
 
-				time.Sleep(100 * time.Millisecond)
-
 				// проверка клиентских каналов
+				slept := false
 				for i, grpc := range tt.grpcs {
-					if clients[i].ch == nil {
+					ch := clients[i].ch
+					if ch == nil {
 						continue
 					}
 					if grpc.ticks[tick] {
-						require.Lenf(t, clients[i].ch, 1, "tick %d, client %d", tick, i)
-						<-clients[i].ch
+						require.Eventuallyf(t, func() bool {
+							return len(ch) == 1
+						}, 100*time.Millisecond, time.Millisecond, "tick %d, client %d", tick, i)
+						<-ch
 					} else {
-						require.Lenf(t, clients[i].ch, 0, "tick %d, client %d", tick, i)
+						if !slept {
+							time.Sleep(100 * time.Millisecond)
+							slept = true
+						}
+						require.Lenf(t, ch, 0, "tick %d, client %d", tick, i)
 					}
 				}
 
