@@ -19,6 +19,10 @@ version: build
 test:
 	go test -count=20 -race ./...
 
+.PHONY: test-integr
+test-integr:
+	go test -count=1 -race -tags integration ./test
+
 install-lint-deps:
 	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.35.0
 
